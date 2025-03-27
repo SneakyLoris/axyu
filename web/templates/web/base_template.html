@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тапок</title>
+</head>
+<body>
+    <h1><b><a href="{% url 'main' %}">Тапок</a></b></h1>
+    <nav>
+      <a href="{% url 'main' %}">Главная страница</a>
+    </nav>
+    <hr>
+    {% block content %} {% endblock %}
+</body>
+</html>
