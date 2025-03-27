@@ -76,8 +76,12 @@ WSGI_APPLICATION = 'rewiev_website.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'ck_project',
+        'USER': 'postgres',
+        'PASSWORD' : '2505103046',
+        'HOST' : 'localhost',
+        'PORT' : 5432,
     }
 }
 
