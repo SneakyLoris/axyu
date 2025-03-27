@@ -1,0 +1,13 @@
+<h1 align="center">Здарова там!</h1>
+<h4 align="justify">Мы небольшая команда Казанского федерального и 
+пишем проект для Цифровых кафедр.</h4>
+<h4>Пока тут ничего нет, но это ненадолго</h4><hr>
+<h3>Команды для запуска проекта:</h3>
+
+<ul>
+<li>'python3 -n venv venv' - создание виртуального окружения;</li>
+<li>'source venv/bin/activate' - вход в виртуальное окружение;</li>
+<li>'pip install -r requirements.txt' - установка зависимостей;</li>
+<li>'python3 manage.py migrate' - миграция моделей;</li>
+<li>'python3 manage.py runserver' - запуск сервера для разработки.</li>
+</ul>
