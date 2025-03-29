@@ -5,7 +5,7 @@
 
 <h3>Команды для запуска проекта:</h3>
 <ul>
-<li>'python3 -n venv venv' - создание виртуального окружения;</li>
+<li>'python3 -m venv venv' - создание виртуального окружения;</li>
 <li>'source venv/bin/activate' - вход в виртуальное окружение;</li>
 <li>'pip install -r requirements.txt' - установка зависимостей;</li>
 <li>'python3 manage.py migrate' - миграция моделей;</li>
