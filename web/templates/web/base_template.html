@@ -8,6 +8,11 @@
     <h1><b><a href="{% url 'main' %}">Тапок</a></b></h1>
     <nav>
       <a href="{% url 'main' %}">Главная страница</a>
+        <div style="text-align: right">
+            <a href=" {% url 'registration' %} ">Регистрация</a>
+            //
+            <a href=" {% url 'auth' %} ">Авторизация</a>
+        </div>
     </nav>
     <hr>
     {% block content %} {% endblock %}
