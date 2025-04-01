@@ -56,6 +56,7 @@ def logout_view(request):
 
 
 def goods_view(request, value):
+    # Тут модельки надо определить, чтобы что-то делать дальше
     pass
 
 
