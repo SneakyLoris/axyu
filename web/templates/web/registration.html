@@ -1,0 +1,12 @@
+{% extends 'web/base_template.html' %}
+{% block content %}
+<form action="" method="post">
+    {% csrf_token %}
+    {% if is_success %}
+        <p>Успешная регистрация</p>
+    {% else %}
+        {{ form.as_p }}
+        <button>Зарегистрироваться</button>
+    {% endif %}
+</form>
+{% endblock %}

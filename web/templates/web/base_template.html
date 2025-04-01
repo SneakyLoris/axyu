@@ -8,6 +8,15 @@
     <h1><b><a href="{% url 'main' %}">Тапок</a></b></h1>
     <nav>
       <a href="{% url 'main' %}">Главная страница</a>
+        <div style="text-align: right">
+            {% if user.is_anonymous %}
+                <a href=" {% url 'registration' %} ">Регистрация</a>
+                //
+                <a href=" {% url 'login' %} ">Авторизация</a>
+            {% else %}
+                <a href=" {% url 'logout' %}">Выход</a>
+            {% endif %}
+        </div>
     </nav>
     <hr>
     {% block content %} {% endblock %}
