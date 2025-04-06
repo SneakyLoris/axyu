@@ -1,0 +1,7 @@
+FROM postgres:latest
+
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=postgres 
+ENV POSTGRES_DB=ck_project
+
+EXPOSE 5432
