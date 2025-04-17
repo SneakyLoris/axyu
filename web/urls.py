@@ -9,7 +9,7 @@ urlpatterns = [
     path('login', auth_view, name='login'),
     path('logout', logout_view, name='logout'),
     ##########################################
-    path('stats/', stats_view, name='stats'),  # ТЕСТОВЫЙ РЕЖИМ!!!!
-    path('tests/', tests_view, name='tests'),  # ТЕСТОВЫЙ РЕЖИМ!!!!
-    path('category/add', add_category_view, name='add_category'),  # ТЕСТОВЫЙ РЕЖИМ!!!!
+    path('stats/', stats_view, name='stats'),
+    path('tests/', tests_view, name='tests'),
+    path('category/add', add_category_view, name='add_category'),
 ]
