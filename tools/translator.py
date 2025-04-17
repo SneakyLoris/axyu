@@ -31,7 +31,7 @@ def process_words(input_file, output_file):
             word = word.strip()
             trans_word = translate_word(word)
             transcription = get_transcription(word)
-            fout.write(f'{word} {trans_word} {transcription}\n')
+            fout.write(f'{word};{trans_word};{transcription}\n')
 
 
 def main():
