@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Vocabulary Trainer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        header {
+            background-color: #4285f4;
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            background-color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Замените background-image на путь к вашему логотипу */
+            background-image: url('path-to-your-logo.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-left: 15px;
+            flex-grow: 1;
+        }
+        
+        .search-bar {
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .search-bar input {
+            width: 60%;
+            max-width: 500px;
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 30px;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.3s;
+        }
+        
+        .search-bar input:focus {
+            border-color: #4285f4;
+        }
+        
+        .intro {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .categories {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 40px 0;
+        }
+        
+        .category-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .category-card h3 {
+            color: #4285f4;
+            margin-bottom: 10px;
+        }
+        
+        .category-card p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 50px;
+        }
+        
+        @media (max-width: 768px) {
+            .categories {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .categories {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .logo {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div class="logo"></div>
+            <h1>English Vocabulary Trainer</h1>
+        </div>
+    </header>
+    
+    <main class="container">
+        <div class="search-bar">
+            <input type="text" placeholder="Q Искать слова...">
+        </div>
+        
+        <div class="intro">
+            <h2>Улучшите свой словарный запас английского языка</h2>
+            <p>Изучайте слова по категориям, добавляйте свои собственные слова и отслеживайте свой прогресс в изучении английского языка.</p>
+        </div>
+        
+        <div class="categories">
+            <!-- Первая строка категорий -->
+            <div class="category-card">
+                <h3>Базовые глаголы</h3>
+                <p>563 слова</p>
+            </div>
+            
+            <div class="category-card">
+                <h3>Бизнес лексика</h3>
+                <p>417 слов</p>
+            </div>
+            
+            <div class="category-card">
+                <h3>Путешествия</h3>
+                <p>289 слов</p>
+            </div>
+            
+            <div class="category-card">
+                <h3>Еда и рестораны</h3>
+                <p>215 слов</p>
+            </div>
+            
+            <!-- Вторая строка категорий -->
+            <div class="category-card">
+                <h3>Наука и технологии</h3>
+                <p>342 слова</p>
+            </div>
+            
+            <div class="category-card">
+                <h3>Здоровье и медицина</h3>
+                <p>178 слов</p>
+            </div>
+            
+            <div class="category-card">
+                <h3>Искусство и культура</h3>
+                <p>156 слов</p>
+            </div>
+            
+            <div class="category-card">
+                <h3>Спорт и фитнес</h3>
+                <p>132 слова</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <button style="padding: 10px 20px; background-color: #4285f4; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                + Добавить категорию
+            </button>
+            <button style="padding: 10px 20px; background-color: #f5f5f5; color: #333; border: 1px solid #ddd; border-radius: 5px; margin-left: 10px; cursor: pointer;">
+                - Свои слова
+            </button>
+        </div>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 English Vocabulary Trainer. Все права защищены.</p>
+        </div>
+    </footer>
+</body>
+</html>

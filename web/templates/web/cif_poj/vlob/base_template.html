@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Vocabulary Trainer</title>
+    <style>
+        /* Все ваши CSS стили */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        /* Остальные стили... */
+    </style>
+</head>
+<body>
+    <nav>
+        <div>
+            <h1><a href="{% url 'main' %}">English Vocabulary Trainer</a></h1>
+        </div>
+        <div>
+            <a href="{% url 'main' %}">Главная страница</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'logout' %}">Выход</a>
+            {% else %}
+                <a href="{% url 'registration' %}">Регистрация</a>
+                <a href="{% url 'login' %}">Авторизация</a>
+            {% endif %}
+        </div>
+    </nav>
+    <hr>
+    
+    {% block content %}{% endblock %}
+</body>
+</html>
