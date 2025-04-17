@@ -1,24 +1,56 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Тапок</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}English Vocabulary Trainer{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'web/css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'web/css/header.css' %}">
+    <link rel="stylesheet" href="{% static 'web/css/footer.css' %}">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <h1><b><a href="{% url 'main' %}">Тапок</a></b></h1>
-    <nav>
-      <a href="{% url 'main' %}">Главная страница</a>
-        <div style="text-align: right">
-            {% if user.is_anonymous %}
-                <a href=" {% url 'registration' %} ">Регистрация</a>
-                //
-                <a href=" {% url 'login' %} ">Авторизация</a>
+    <header>
+        <div class="header-container">
+            <div class="logo-title">
+                <div class="logo"></div>
+                <h1><a href="{% url 'main' %}" class="site-title">English Vocabulary Trainer</a></h1>
+            </div>
+            
+            <nav class="nav-menu">
+            <a href="{% url 'main' %}">Главная</a>
+            <a href="{% url 'tests' %}">Тесты</a>
+            <a href="{% url 'stats' %}">Моя успеваемость</a>
+
+                {% if user.is_authenticated %}
+                <a href="{% url 'logout' %}">Выйти</a>
             {% else %}
-                <a href=" {% url 'logout' %}">Выход</a>
+                <a href="{% url 'registration' %}">Регистрация</a>
+                <a href="{% url 'login' %}">Войти</a>
             {% endif %}
+            </nav>
         </div>
-    </nav>
-    <hr>
-    {% block content %} {% endblock %}
+    </header>
+    
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>О нас</h3>
+                <p>English Vocabulary Trainer - это инновационная платформа для эффективного изучения английских слов.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Контакты</h3>
+                <p><a href="mailto:ildan.latfullin@yandex.ru" class="contact-email">ildan.latfullin@yandex.ru</a></p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 English Vocabulary Trainer. Все права защищены.</p>
+        </div>
+    </footer>
 </body>
 </html>
