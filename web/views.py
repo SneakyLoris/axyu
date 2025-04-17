@@ -55,10 +55,14 @@ def logout_view(request):
     return redirect("main")
 
 
-def goods_view(request, value):
-    # Тут модельки надо определить, чтобы что-то делать дальше
-    pass
+def stats_view(request):
+    return render(request, "web/stats.html")
 
 
-def good_view(request, value):
-    pass
+def tests_view(request):
+    return render(request, "web/tests.html")
+
+
+def add_category_view(request):
+    # БУДЕТ ФОРМА
+    return render(request, "web/stats.html")
