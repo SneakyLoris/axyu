@@ -21,6 +21,7 @@
             <nav class="nav-menu">
             <a href="{% url 'main' %}">Главная</a>
             <a href="{% url 'tests' %}">Тесты</a>
+            <a href="{% url 'categories' %}">Категории</a>
             {% if user.is_authenticated %}
                 <a href="{% url 'stats' %}">Моя успеваемость</a>
                 <a href="{% url 'logout' %}">Выйти</a>

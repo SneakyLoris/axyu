@@ -63,17 +63,19 @@ def tests_view(request):
     return render(request, "web/tests.html")
 
 
-def category_view(request, value):
-    if value is not None:
-        cats = Category.objects.filter(name=value)
-    else:
-        cats = Category.objects.all()
+def categories_view(request):
+    categories = Category.objects.all()
 
-
-
-    return render(request, "web/stats.html")
+    return render(request, "web/categories.html", {
+        "categories": categories,
+    })
 
 
 def add_category_view(request):
     # БУДЕТ ФОРМА
     return render(request, "web/stats.html")
+
+
+def remove_category_view(request):
+    # БУДЕТ УДАЛЕНИЕ КАТЕГОРИИ
+    return redirect("web/main.html")
