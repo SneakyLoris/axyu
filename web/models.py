@@ -12,11 +12,19 @@ class Category(models.Model):
     description = models.TextField(blank=True)
 
 
+    def __str__(self):
+        return f"{self.name}: {self.description}"
+
+
 class Word(models.Model):
     category = models.ManyToManyField(Category, related_name='words')
     word = models.CharField(max_length=50, unique=True)
     translation = models.CharField(max_length=50, null=False, blank=False)
     transcription = models.CharField(max_length=50, null=False, blank=False)
+
+
+    def __str__(self):
+        return f"{self.word} - {self.translation} - {self.transcription}\n{self.category}"
 
 
 @receiver(m2m_changed, sender=Word.category.through)
