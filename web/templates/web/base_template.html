@@ -21,9 +21,8 @@
             <nav class="nav-menu">
             <a href="{% url 'main' %}">Главная</a>
             <a href="{% url 'tests' %}">Тесты</a>
-            <a href="{% url 'stats' %}">Моя успеваемость</a>
-
-                {% if user.is_authenticated %}
+            {% if user.is_authenticated %}
+                <a href="{% url 'stats' %}">Моя успеваемость</a>
                 <a href="{% url 'logout' %}">Выйти</a>
             {% else %}
                 <a href="{% url 'registration' %}">Регистрация</a>
@@ -52,5 +51,7 @@
             <p>&copy; 2025 English Vocabulary Trainer. Все права защищены.</p>
         </div>
     </footer>
+
+    {% block scripts %}{% endblock %}
 </body>
 </html>

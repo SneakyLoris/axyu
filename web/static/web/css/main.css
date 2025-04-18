@@ -60,14 +60,28 @@
     margin-bottom: 10px;
 }
 
+.category-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.empty-categories {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-style: italic;
+}
+
 @media (max-width: 768px) {
-    .categories {
+    .category-row {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media (max-width: 480px) {
-    .categories {
+    .category-row {
         grid-template-columns: 1fr;
     }
 }

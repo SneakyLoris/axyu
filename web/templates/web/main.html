@@ -17,11 +17,19 @@
 
 <div class="categories">
     {% for category in categories %}
-    <a href="{% url 'category' category.id %}" class="category-link">
-        <div class="category-card">
-            <h3>{{ category.name }}</h3>
+        {% if forloop.counter0|divisibleby:4 %}<div class="category-row">{% endif %}
+
+        <a href="{% url 'category' category.id %}" class="category-link">
+            <div class="category-card">
+                <h3>{{ category.name }}</h3>
+            </div>
+        </a>
+
+        {% if forloop.counter|divisibleby:4 or forloop.last %}</div>{% endif %}
+    {% empty %}
+        <div class="empty-categories">
+            <p>Пока нет ни одной категории</p>
         </div>
-    </a>
     {% endfor %}
 </div>
 
