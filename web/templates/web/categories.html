@@ -16,7 +16,7 @@
     {% for category in categories %}
         {% if forloop.counter0|divisibleby:4 %}<div class="category-row">{% endif %}
 
-        <a href="{% url 'categories' category.name %}" class="category-link">
+        <a href="{% url 'categories_wordlist' category.name %}" class="category-link">
             <div class="category-card">
                 <h3>{{ category.name }}</h3>
             </div>

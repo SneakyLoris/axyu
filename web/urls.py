@@ -13,7 +13,8 @@ urlpatterns = [
     path('tests', tests_view, name='tests'),
     ##########################################
     path('categories', categories_view, name='categories'),
-    path('categories/<str:category_name>', categories_view, name='categories'),
+    path('categories/<str:category_name>', categories_wordlist_view, name='categories_wordlist'),
+
     path('category/add', add_category_view, name='add_category'),
     path('category/remove', remove_category_view, name='remove_category'),
 ]

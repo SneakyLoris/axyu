@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
-from web.models import User, Category
+from web.models import User, Category, Word
 
 from web.forms import RegistrationForm, AuthForm
 
@@ -68,6 +68,21 @@ def categories_view(request):
 
     return render(request, "web/categories.html", {
         "categories": categories,
+    })
+
+
+def categories_wordlist_view(request, category_name):
+    try:
+        category = Category.objects.get(name=category_name)
+        wordlist = Word.objects.filter(category=category)
+    except Category.DoesNotExist:
+        # Либо выбрасывать 404, мол такой страницы нет
+        category = None
+        wordlist = None
+
+    return render(request, "web/category_contains.html", {
+        "wordlist": wordlist,
+        "category": category,
     })
 
 
