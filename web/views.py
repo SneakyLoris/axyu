@@ -80,6 +80,10 @@ def categories_wordlist_view(request, category_name):
         category = None
         wordlist = None
 
+    print(wordlist)
+    print(category)
+    print(Word.objects.get(id=10))
+
     return render(request, "web/category_contains.html", {
         "wordlist": wordlist,
         "category": category,
