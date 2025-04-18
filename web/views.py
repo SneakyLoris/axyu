@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
-from web.models import User
+from web.models import User, Category
 
 from web.forms import RegistrationForm, AuthForm
 
@@ -61,6 +61,17 @@ def stats_view(request):
 
 def tests_view(request):
     return render(request, "web/tests.html")
+
+
+def category_view(request, value):
+    if value is not None:
+        cats = Category.objects.filter(name=value)
+    else:
+        cats = Category.objects.all()
+
+
+
+    return render(request, "web/stats.html")
 
 
 def add_category_view(request):

@@ -11,5 +11,6 @@ urlpatterns = [
     ##########################################
     path('stats/', stats_view, name='stats'),
     path('tests/', tests_view, name='tests'),
+    path('category/<str:category_name>', add_category_view, name='category'),
     path('category/add', add_category_view, name='add_category'),
 ]
