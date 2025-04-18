@@ -65,10 +65,8 @@ class Command(BaseCommand):
                     word=original, 
                     translation=translation,
                     transcription=transcription)
-                word.category.through(
-                    word_id=word.id,
-                    category_id=category.id
-                )
+                word.category.add(category)
+                
         after_count = Word.objects.count()
 
         return after_count - before_count
