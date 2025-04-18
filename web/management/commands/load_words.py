@@ -50,11 +50,7 @@ class Command(BaseCommand):
         )
 
     def process_file(self, file_path, category):
-        words_to_create = []
-        existing_words = set(
-            Word.objects.filter(category=category)
-            .values_list('word', flat=True)
-        )
+        before_count = Word.objects.count()
 
         with open(file_path, 'r', encoding='utf-8') as f:
             for line in f:
@@ -64,19 +60,15 @@ class Command(BaseCommand):
                     continue
 
                 original, translation, transcription = line.split(';')
-                if original in existing_words:
-                    continue
-                words_to_create.append(Word(
-                    word=original,
+
+                word, _ = Word.objects.get_or_create(
+                    word=original, 
                     translation=translation,
-                    transcription=transcription
-                ))
+                    transcription=transcription)
+                word.category.through(
+                    word_id=word.id,
+                    category_id=category.id
+                )
+        after_count = Word.objects.count()
 
-        created_words = Word.objects.bulk_create(words_to_create)
-
-        Word.category.through.objects.bulk_create([
-            Word.category.through(word_id=word.id, category_id=category.id)
-            for word in created_words
-        ])
-
-        return len(created_words)
+        return after_count - before_count
