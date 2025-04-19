@@ -17,9 +17,9 @@
     <div class="words-list">
         {% for word in wordlist %}
         <div class="word-row">
-            <span class="english-word">{{ word.english }}</span>
+            <span class="english-word">{{ word.word }} / {{ word.transcription }} /</span>
             <span class="separator">—</span>
-            <span class="russian-word">{{ word.russian }}</span>
+            <span class="russian-word">{{ word.translation }}</span>
         </div>
         {% empty %}
             {% if wordlist is None %}
