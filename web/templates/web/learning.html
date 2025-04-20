@@ -1,0 +1,25 @@
+{% extends 'web/base_template.html' %}
+
+{% block title %}Учить слова | English Vocabulary Trainer{% endblock %}
+
+{% block content %}
+<h1>Доступные тесты</h1>
+<div>
+    <div>
+        <h2>Изучение</h2>
+        <p>Начните изучать новые слова из выбранных категорий</p>
+        <a href="{% url 'learning_new_words' %}">Начать →</a>
+    </div>
+    <div>
+        <h2>Повторение</h2>
+        <p>Закрепите пройденные слова для лучшего запоминания</p>
+        <a href="{% url 'learning_repeat' %}">Повторить →</a>
+    </div>
+    <div>
+        <h2>Тесты</h2>
+        <p>Проверьте свои знания с помощью интерактивных тестов</p>
+        <a href="{% url 'learning_tests' %}">Пройти тест →</a>
+    </div>
+</div>
+
+{% endblock %}

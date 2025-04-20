@@ -59,8 +59,17 @@ def stats_view(request):
     return render(request, "web/stats.html")
 
 
-def tests_view(request):
-    return render(request, "web/tests.html")
+def learning_view(request):
+    return render(request, "web/learning.html")
+
+def learning_new_words_view(request):
+    return render(request, "web/learning.html")
+
+def learning_repeat_view(request):
+    return render(request, "web/learning.html")
+
+def learning_tests_view(request):
+    return render(request, "web/learning.html")
 
 
 def categories_view(request):
