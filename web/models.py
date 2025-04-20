@@ -66,6 +66,14 @@ class Word_Repetiotion(models.Model):
         unique_together = ['user', 'word']
 
 
+class Learning_Categories(models.Model):
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ['user', 'category']
+
+
 class Learned_Word(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     word = models.ForeignKey(Word, on_delete=models.CASCADE)
