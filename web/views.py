@@ -63,7 +63,7 @@ def learning_view(request):
     return render(request, "web/learning.html")
 
 def learning_new_words_view(request):
-    return render(request, "web/learning.html")
+    return render(request, "web/new_words.html")
 
 def learning_repeat_view(request):
     return render(request, "web/learning.html")

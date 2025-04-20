@@ -1,0 +1,84 @@
+.flashcard-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 20px auto;
+    text-align: center;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 400px;
+    margin: 40px auto 0;
+    padding: 0;
+}
+
+.flashcard {
+    width: 100%;
+    height: 200px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 40px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.word {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.translation {
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 160px;
+}
+
+.btn-know {
+    background-color: #ffffff;
+    color: #4285f4;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn-dont-know {
+    background-color: #4285f4;
+    color: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.stat-item {
+    text-align: center;
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.stat-label {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}

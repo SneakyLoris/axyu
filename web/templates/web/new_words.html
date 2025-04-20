@@ -1,0 +1,41 @@
+{% extends 'web/base_template.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/learning.css' %}">
+{% endblock %}
+
+{% block title %}Учить слова | English Vocabulary Trainer{% endblock %}
+
+{% block content %}
+
+<h1 style="margin-bottom: 40px; text-align: center; margin-top: 50px;">Изучение слов</h1>
+    
+<div class="flashcard-container">
+    <div class="flashcard">
+        <div class="word">Hello</div>
+        <div class="translation">Привет</div>
+    </div>
+    
+    <div class="controls">
+        <button class="btn btn-know">Знаю это слово</button>
+        <button class="btn btn-dont-know">Начать учить это слово</button>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-item">
+            <div class="stat-value">15</div>
+            <div class="stat-label">Всего слов</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">5</div>
+            <div class="stat-label">Выучено</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">10</div>
+            <div class="stat-label">Осталось</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
