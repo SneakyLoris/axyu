@@ -58,8 +58,8 @@ class Word_Repetiotion(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     word = models.ForeignKey(Word, on_delete=models.CASCADE)
     next_review = models.DateTimeField()
-    repetition_count = models.PositiveIntegerField(default=1)
-    last_interval_minutes = models.PositiveIntegerField(default=30)
+    repetition_count = models.PositiveIntegerField(default=0)
+    last_interval_minutes = models.PositiveIntegerField(default=0)
 
     class Meta:
         unique_together = ['user', 'word']

@@ -6,6 +6,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'web/js/cookie_utils.js' %}"></script>
 <script src="{% static 'web/js/new_words.js' %}"></script>
 {% endblock %}
 
@@ -16,29 +17,21 @@
 <h1 style="margin-bottom: 40px; text-align: center; margin-top: 50px;">Изучение слов</h1>
     
 <div class="flashcard-container">
-    <div class="flashcard">
-        <div class="word" id="word">Hello</div>
-        <div class="translation" id="translation">Привет</div>
+    <div class="flashcard" id="flashcard">
+        <div class="word" id="word"></div>
+        <div class="transcription" id="transcription"></div>
+        <div class="translation" id="translation"></div>
     </div>
     
-    <div class="controls">
+    <div class="controls" id="controls">
         <button class="btn btn-know" id="btnKnow">Знаю это слово</button>
         <button class="btn btn-dont-know" id="btnDontKnow">Начать учить это слово</button>
     </div>
 
-    <div class="stats-row">
-        <div class="stat-item">
-            <div class="stat-value" id="wordsTotal">15</div>
-            <div class="stat-label">Всего слов</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value" id="wordsLearned">5</div>
-            <div class="stat-label">Выучено</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value" id="wordsRemain">10</div>
-            <div class="stat-label">Осталось</div>
-        </div>
+    <div class="no-words-message" id="noWordsMessage" style="display: none;">
+        <h2>Вы изучили все слова!</h2>
+        <p>Хотите выбрать новые категории для изучения?</p>
+        <a href="/categories" class="btn btn-large">Выбрать категории</a>
     </div>
 </div>
 
