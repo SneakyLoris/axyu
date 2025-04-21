@@ -7,6 +7,12 @@
 <link rel="stylesheet" href="{% static 'css/category.css' %}">
 {% endblock %}
 
+{% block scripts %}
+<script src="{% static 'web/js/cookie_utils.js' %}"></script>
+<script src="{% static 'web/js/category.js' %}"></script>
+{% endblock %}
+
+
 {% block content %}
 <div class="category-header">
     <h2>Категории словаря</h2>
@@ -20,6 +26,13 @@
             <div class="category-card">
                 <h3>{{ category.name }}</h3>
             </div>
+            {% if user.is_authenticated %}
+            <input type="checkbox"
+                    id="cat-{{ category.id }}"
+                    class="category-checkbox"
+                    data-id="{{ category.id }}"
+                    {% if category.id in user_selected_categories %}checked{% endif %}>
+            {% endif %}
         </a>
 
         {% if forloop.counter|divisibleby:4 or forloop.last %}</div>{% endif %}

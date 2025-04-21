@@ -1,7 +1,8 @@
 from django.contrib.auth import authenticate, login, logout
+from django.db.models import Q
 from django.shortcuts import render, redirect
 
-from api.models import User, Category, Word
+from api.models import User, Category, Word, Learning_Category
 from web.forms import RegistrationForm, AuthForm
 
 
@@ -73,10 +74,17 @@ def learning_tests_view(request):
 
 
 def categories_view(request):
-    categories = Category.objects.filter(common=True)
+    categories = Category.objects.filter(
+        Q(owner__isnull=True) | Q(owner_id=request.user.id)
+    )
+    user_selected = Learning_Category.objects.filter(
+        user_id=request.user.id
+    )
+    user_selected_categories = user_selected.values_list('category_id', flat=True)
 
     return render(request, "web/categories.html", {
         "categories": categories,
+        "user_selected_categories": user_selected_categories
     })
 
 

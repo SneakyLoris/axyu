@@ -76,3 +76,9 @@
 .test-link:hover {
     text-decoration: underline;
 }
+
+
+.category-checkbox:checked {
+    border-color: #4CAF50;
+    background: #f0fff0;
+}
