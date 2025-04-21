@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
-from web.models import User, Category, Word
 
+from api.models import User, Category, Word
 from web.forms import RegistrationForm, AuthForm
 
 
@@ -73,7 +73,7 @@ def learning_tests_view(request):
 
 
 def categories_view(request):
-    categories = Category.objects.all()
+    categories = Category.objects.filter(common=True)
 
     return render(request, "web/categories.html", {
         "categories": categories,

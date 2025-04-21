@@ -61,10 +61,20 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
+.btn-know:hover {
+    background-color: #eeeeee; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+}
+
 .btn-dont-know {
     background-color: #4285f4;
     color: white;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn-dont-know:hover {
+    background-color: #3174e3; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .stat-item {
