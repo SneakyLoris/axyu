@@ -51,6 +51,7 @@ function showNextQuestion() {
     questionElement.textContent = currentTest.word;
 
     optionsElement.innerHTML = ''
+    optionsElement.style = "grid-template-columns: 1fr 1 fr";
 
     currentTest.options.forEach((option, index) => {
         console.log(option.translation);
@@ -136,4 +137,5 @@ function finishTest() {
 
     buttonContainer.appendChild(restartButton);
     optionsElement.appendChild(buttonContainer);
+    optionsElement.style = "grid-template-columns: 1fr";
 }
