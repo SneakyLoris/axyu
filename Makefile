@@ -22,3 +22,6 @@ run_docker_db:
 
 load_words:
 	$(PYTHON) $(MANAGE) $(COMMAND_LOAD_WORDS) $(WORDLISTS_TRANSLATED_DIR)
+
+run:
+	$(PYTHON) $(MANAGE) runserver
