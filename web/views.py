@@ -70,7 +70,7 @@ def learning_repeat_view(request):
     return render(request, "web/repeat_words.html")
 
 def learning_tests_view(request):
-    return render(request, "web/learning.html")
+    return render(request, "web/tests.html")
 
 
 def categories_view(request):

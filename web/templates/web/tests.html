@@ -1,0 +1,43 @@
+{% extends 'web/base_template.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/learning.css' %}">
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'web/js/cookie_utils.js' %}"></script>
+<script src="{% static 'web/js/tests.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="test-container">
+    <h1 id="categoryName" data-id="{{ category.id }}">Тест по категории: {{ category.name }}</h1>
+    
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    
+    <div class="test-card" id="testCard">
+        <div class="question" id="question">guilty</div>
+        <div class="options" id="options">
+            <!-- Варианты ответов будут добавлены через JS -->
+        </div>
+    </div>
+    
+    <div class="test-stats">
+        <div class="stat-item">
+            <div class="stat-value" id="correctCount">0</div>
+            <div class="stat-label">Правильно</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="wrongCount">0</div>
+            <div class="stat-label">Ошибки</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="remainingCount">0</div>
+            <div class="stat-label">Осталось</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

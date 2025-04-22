@@ -1,24 +1,29 @@
 {% extends 'web/base_template.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/learning.css' %}">
+{% endblock %}
 
 {% block title %}Учить слова | English Vocabulary Trainer{% endblock %}
 
 {% block content %}
 <h1>Доступные тесты</h1>
 <div>
-    <div>
+    <div class="learning-variant">
         <h2>Изучение</h2>
         <p>Начните изучать новые слова из выбранных категорий</p>
-        <a href="{% url 'learning_new_words' %}">Начать →</a>
+        <a href="{% url 'learning_new_words' %}" class="learning-link">Начать →</a>
     </div>
-    <div>
+    <div class="learning-variant">
         <h2>Повторение</h2>
         <p>Закрепите пройденные слова для лучшего запоминания</p>
-        <a href="{% url 'learning_repeat' %}">Повторить →</a>
+        <a href="{% url 'learning_repeat' %}" class="learning-link">Повторить →</a>
     </div>
-    <div>
+    <div class="learning-variant">
         <h2>Тесты</h2>
         <p>Проверьте свои знания с помощью интерактивных тестов</p>
-        <a href="{% url 'learning_tests' %}">Пройти тест →</a>
+        <a href="{% url 'learning_tests' %}" class="learning-link">Пройти тест →</a>
     </div>
 </div>
 
