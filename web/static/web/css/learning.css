@@ -83,6 +83,7 @@
     border-radius: 15px;
     margin-top: 20px;
     display: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .no-words-message h2 {
@@ -99,4 +100,24 @@
 .btn-large {
     padding: 15px 30px;
     font-size: 1.2rem;
+}
+
+
+.btn-show-translation {
+    background-color: white;
+    color: #4285f4;
+    margin-bottom: 50px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn-show-translation:hover {
+    background-color: #eeeeee; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.memory-controls {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
 }

@@ -66,7 +66,7 @@ def new_word_send_result(request):
             Word_Repetiotion.objects.create(
                 user=user,
                 word_id=word_id,
-                next_review=timezone.now() + timedelta(minutes=30)
+                next_review=timezone.now() + timedelta(seconds=30)
             )
 
         return JsonResponse({'status': 'success', 'message': message}, status=200)
@@ -112,3 +112,97 @@ def get_new_word(request):
         })
     except Exception as e: 
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@api_view(['GET'])
+def get_word_repeat(request):
+    try:
+        user = request.user
+        now = timezone.now()
+
+        words_to_repeat = Word_Repetiotion.objects.filter(
+            user=user,
+            next_review__lte=now
+        )
+
+        if not words_to_repeat.exists():
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'No words to repeat'}
+                , status=200)
+        
+        words_ids = words_to_repeat.values_list('word_id', flat=True)
+        words_to_repeat = Word.objects.filter(
+            id__in=words_ids
+        )
+
+        word_to_repeat = random.choice(words_to_repeat)
+
+        return JsonResponse({
+            'status': 'success',
+            'id': word_to_repeat.id,
+            'word': word_to_repeat.word,
+            'translation': word_to_repeat.translation,
+            'transcription': word_to_repeat.transcription
+        })
+
+    except Exception as e: 
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@api_view(['POST'])
+def send_repeat_result(request):
+    try:
+        data = request.data
+
+        word_id = data.get('word_id')
+        is_known = data.get('is_known')
+        user = request.user
+
+        message = ''
+        repetition, created = Word_Repetiotion.objects.get_or_create(user=user, word_id=word_id)
+
+        if is_known:
+            learned = False
+
+            if not created:
+                if repetition.repetition_count == 4:
+                    learned = True
+                elif repetition.repetition_count == 0:
+                    new_interval = 1 # 1 min
+                elif repetition.repetition_count == 1:
+                    new_interval = 2 # 2 min
+                elif repetition.repetition_count == 2:
+                    new_interval = 3 # 3 min
+                elif repetition.repetition_count == 3:
+                    new_interval = 4 # 4 min
+                    
+            if learned:
+                repetition.delete()
+                message = 'Word learned successfully'
+            else:
+                repetition.repetition_count += 1
+                repetition.next_review = timezone.now() + timedelta(
+                    minutes=new_interval
+                )
+                repetition.save()
+                message = 'Word repeated successfully'
+        else:
+            if repetition.repetition_count > 2:
+                repetition.repetition_count = 2
+                new_interval = 3
+                repetition.next_review = timezone.now() + timedelta(minutes=new_interval)
+            else:
+                new_interval = repetition.repetition_count
+                repetition.next_review = timezone.now() + timedelta(
+                    minutes=new_interval
+                )
+                repetition.save()
+            message = 'Word was not repeated'
+                
+
+        return JsonResponse({'status': 'success', 'message': message}, status=200)
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+     

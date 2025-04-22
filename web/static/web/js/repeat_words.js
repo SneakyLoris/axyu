@@ -1,18 +1,19 @@
 const flashcard = document.getElementById("flashcard");
-const controls = document.getElementById("controls");
+const controls = document.getElementById("memoryControls");
 const word = document.getElementById("word");
 const translation = document.getElementById("translation");
 const transcription = document.getElementById("transcription");
 const btnKnow = document.getElementById("btnKnow");
 const btnDontKnow = document.getElementById("btnDontKnow");
 const noWordMessage = document.getElementById('noWordsMessage');
+const btnShowTranslation = document.getElementById('btnShowTranslation');
 
 const csrftoken = getCookie('csrftoken');
 let currentWordId = null;
 
-async function loadNewCard() {
+async function loadWordForRepeat() {
     try {
-        const response = await fetch('/api/learning/get_new_word');
+        const response = await fetch('/api/learning/get_word_repeat');
         const data = await response.json();
 
         if (data['status'] == 'success') {
@@ -23,17 +24,18 @@ async function loadNewCard() {
         } else {
             flashcard.style.display = 'none';
             controls.style.display = 'none';
+            btnShowTranslation.style.display = 'none';
             noWordMessage.style.display = 'block';
         }
     } catch (error) {
         console.error('Ошибка загрузки карточки:', error);       
-    }
+    }    
 }
 
-loadNewCard();
+loadWordForRepeat();
 
-async function sendResult(isKnown) {
-    const response = await fetch('/api/learning/new_word_send_result', {
+async function sendRepeatResult(remembered) {
+    const response = await fetch('/api/learning/send_repeat_result', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -42,23 +44,27 @@ async function sendResult(isKnown) {
         credentials: 'include',
         body: JSON.stringify({
           word_id: currentWordId,
-          is_known: isKnown
+          is_known: remembered
         })
     });
-
-    if (!response.ok) {
-        console.error(`Error: ${response.text}`);
-    }
-
-    const result = await response.json();
-    await loadNewCard();
 }
 
-
 btnKnow.addEventListener('click', function() {
-    sendResult(true);
+    sendRepeatResult(true);
+    translation.style.display = 'none';
+    transcription.style.display = 'none';
+    loadWordForRepeat();
+
 });
 
 btnDontKnow.addEventListener('click', function() {
-    sendResult(false);
+    sendRepeatResult(false);
+    translation.style.display = 'none';
+    transcription.style.display = 'none';
+    loadWordForRepeat();
+});
+
+btnShowTranslation.addEventListener('click', function() {
+    translation.style.display = 'block';
+    transcription.style.display = 'block';
 });

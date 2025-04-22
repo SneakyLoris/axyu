@@ -7,28 +7,31 @@
 
 {% block scripts %}
 <script src="{% static 'web/js/cookie_utils.js' %}"></script>
-<script src="{% static 'web/js/new_words.js' %}"></script>
+<script src="{% static 'web/js/repeat_words.js' %}"></script>
 {% endblock %}
 
 {% block title %}Учить слова | English Vocabulary Trainer{% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom: 40px; text-align: center; margin-top: 50px;">Изучение слов</h1>
-    
 <div class="flashcard-container">
+    <h1 style="margin-bottom: 40px; text-align: center; margin-top: 50px;">Повторение изученных слов</h1>
+    
     <div class="flashcard" id="flashcard">
         <div class="word" id="word"></div>
-        <div class="transcription" id="transcription"></div>
-        <div class="translation" id="translation"></div>
+        <div class="transcription" id="transcription" style="display: none;"></div>
+        <div class="translation" id="translation" style="display: none;"></div>
     </div>
     
-    <div class="controls" id="controls">
-        <button class="btn btn-know" id="btnKnow">Знаю это слово</button>
-        <button class="btn btn-dont-know" id="btnDontKnow">Начать учить это слово</button>
+    <div class="controls">
+        <button class="btn btn-show-translation" id="btnShowTranslation">Показать перевод</button>
+    </div>
+    <div class="memory-controls" id="memoryControls">
+        <button class="btn btn-dont-know" id="btnDontKnow">Не помню</button>
+        <button class="btn btn-know" id="btnKnow">Помню</button>
     </div>
 
     <div class="no-words-message" id="noWordsMessage" style="display: none;">
-        <h2>Вы изучили все слова!</h2>
+        <h2>Вы повторили все слова!</h2>
         <p>Хотите выбрать новые категории для изучения?</p>
         <a href="/categories" class="btn btn-large">Выбрать категории</a>
     </div>
