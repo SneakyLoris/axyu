@@ -9,5 +9,6 @@ urlpatterns = [
     path('learning/new_word_send_result', views.new_word_send_result, name = 'new_word_send_result'),
     path('learning/get_new_word', views.get_new_word, name = 'get_new_word'),
     path('learning/get_word_repeat', views.get_word_repeat, name = 'get_word_repeat'),
-    path('learning/send_repeat_result', views.send_repeat_result, name = 'send_repeat_result')
+    path('learning/send_repeat_result', views.send_repeat_result, name = 'send_repeat_result'),
+    path('learning/get_test_questions', views.get_test_questions, name = 'get_test_questions')
 ]

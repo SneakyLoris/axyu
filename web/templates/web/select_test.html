@@ -15,37 +15,20 @@
 
 {% block content %}
 <div class="category-header">
-    <h2 style="margin-top: 30px;">Категории словаря</h2>
+    <h2 style="margin-top: 30px;">Выберите категорию для теста</h2>
 </div>
 
 <div class="categories">
     {% for category in categories %}
         {% if forloop.counter0|divisibleby:4 %}<div class="category-row">{% endif %}
 
-        <a href="{% url 'categories_wordlist' category.name %}" class="category-link">
+        <a href="{% url 'category_test' %}?category_id={{ category.id }}" class="category-link">
             <div class="category-card">
                 <h3>{{ category.name }}</h3>
             </div>
-            {% if user.is_authenticated %}
-            <input type="checkbox"
-                    id="cat-{{ category.id }}"
-                    class="category-checkbox"
-                    data-id="{{ category.id }}"
-                    {% if category.id in user_selected_categories %}checked{% endif %}>
-            <label for="cat-{{ category.id }}"></label>
-            {% endif %}
         </a>
 
         {% if forloop.counter|divisibleby:4 or forloop.last %}</div>{% endif %}
-    {% empty %}
-        <div class="empty-categories">
-            <p>Пока нет ни одной категории</p>
-        </div>
     {% endfor %}
 </div>
-
-<div>
-    <a href="{% url 'add_category' %}" class="add-new">+ Добавить категорию</a>
-</div>
-
 {% endblock %}

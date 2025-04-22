@@ -15,6 +15,8 @@ class Category(models.Model):
     def __str__(self):
         return f"{self.name}: {self.description}"
 
+    class Meta:
+        unique_together = ['name', 'owner']
 
 class Word(models.Model):
     category = models.ManyToManyField(Category, related_name='words')

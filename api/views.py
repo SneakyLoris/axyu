@@ -206,3 +206,43 @@ def send_repeat_result(request):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
      
+
+@api_view(['GET'])
+def get_test_questions(request):
+    try:
+        category_id = request.GET.get('category_id')
+        all_words = list(Word.objects.filter(
+            category__id=category_id
+        ).values('id', 'word', 'transcription', 'translation'))
+
+        if not all_words:
+            return JsonResponse({'words': []})
+        
+        questions = []
+
+        for word in all_words:
+            other_words = [w for w in all_words if w['id'] != word['id']]
+            wrong_translations = random.sample(
+                [w['translation'] for w in other_words],
+                min(3, len(other_words))
+            )
+
+            options = [{'translation': word['translation'], 'is_correct': True}]
+            options.extend({'translation': trans, 'is_correct': False} for trans in wrong_translations)
+            random.shuffle(options)
+
+            questions.append({
+             
+                'id': word['id'],
+                'word': word['word'],
+                'transcription': word['transcription'],
+                'options': options
+            })
+        
+        return JsonResponse({'questions': questions})
+
+    except Exception as e:
+            return JsonResponse({
+                'success': 'error',
+                'error': str(e)
+            }, status=500)

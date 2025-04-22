@@ -14,6 +14,7 @@ urlpatterns = [
     path('learning/new_words', learning_new_words_view, name='learning_new_words'),
     path('learning/repeat', learning_repeat_view, name='learning_repeat'),
     path('learning/tests', learning_tests_view, name='learning_tests'),
+    path('learning/test', category_test, name='category_test'),
     ##########################################
     path('categories', categories_view, name='categories'),
     path('categories/<str:category_name>', categories_wordlist_view, name='categories_wordlist'),

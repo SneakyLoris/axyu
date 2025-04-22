@@ -70,7 +70,18 @@ def learning_repeat_view(request):
     return render(request, "web/repeat_words.html")
 
 def learning_tests_view(request):
-    return render(request, "web/tests.html")
+    categories = Category.objects.filter(
+        Q(owner__isnull=True) | Q(owner_id=request.user.id)
+    )
+    user_selected = Learning_Category.objects.filter(
+        user_id=request.user.id
+    )
+    user_selected_categories = user_selected.values_list('category_id', flat=True)
+
+    return render(request, "web/select_test.html", {
+        "categories": categories,
+        "user_selected_categories": user_selected_categories
+    })
 
 
 def categories_view(request):
@@ -86,6 +97,17 @@ def categories_view(request):
         "categories": categories,
         "user_selected_categories": user_selected_categories
     })
+
+def category_test(request):
+    category_id = request.GET.get('category_id', '')
+    try:
+        category = Category.objects.get(id=category_id)
+    except Category.DoesNotExist:
+        # Либо выбрасывать 404, мол такой страницы нет
+        category = None
+    return render(request, "web/tests.html", {
+        "category": category,
+    })  
 
 
 def categories_wordlist_view(request, category_name):
