@@ -1,12 +1,56 @@
 {% extends 'web/base_template.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/forms.css' %}">
+{% endblock %}
+
 {% block content %}
 <form action="" method="post">
     {% csrf_token %}
+    
     {% if is_success %}
-        <p>Успешная регистрация</p>
+        <p class="success-message">Успешная регистрация</p>
     {% else %}
-        {{ form.as_p }}
-        <button>Зарегистрироваться</button>
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+        
+        <div class="form-field">
+            <label for="{{ form.username.id_for_label }}">Имя пользователя:</label>
+            {{ form.username }}
+            {% if form.username.errors %}
+                <div class="field-errors">{{ form.username.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-field">
+            <label for="{{ form.email.id_for_label }}">Email:</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+                <div class="field-errors">{{ form.email.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-field">
+            <label for="{{ form.password.id_for_label }}">Пароль:</label>
+            {{ form.password }}
+            {% if form.password.errors %}
+                <div class="field-errors">{{ form.password.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="form-field">
+            <label for="{{ form.password2.id_for_label }}">Подтвердите пароль:</label>
+            {{ form.password2 }}
+            {% if form.password2.errors %}
+                <div class="field-errors">{{ form.password2.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <button type="submit" class="submit-button">Зарегистрироваться</button>
     {% endif %}
 </form>
 {% endblock %}

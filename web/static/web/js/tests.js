@@ -80,10 +80,8 @@ function checkAnswer(e) {
 
     if (is_right) {
         selectedOption.classList.add('correct');
-        incrementCorrect();
     } else {
         selectedOption.classList.add('wrong');
-        incrementWrong();
     }
 
     const correctIndex = currentTest.options.findIndex(option => option.is_correct);

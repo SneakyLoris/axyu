@@ -1,8 +1,36 @@
 {% extends 'web/base_template.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/forms.css' %}">
+{% endblock %}
+
 {% block content %}
 <form action="" method="post">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button>Войти</button>
+    
+    {% if form.non_field_errors %}
+        <div class="form-errors">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+    
+    <div class="form-field">
+        <label for="{{ form.username.id_for_label }}">Имя пользователя:</label>
+        {{ form.username }}
+        {% if form.username.errors %}
+            <div class="field-errors">{{ form.username.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="form-field">
+        <label for="{{ form.password.id_for_label }}">Пароль:</label>
+        {{ form.password }}
+        {% if form.password.errors %}
+            <div class="field-errors">{{ form.password.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <button type="submit" class="submit-button">Войти</button>
 </form>
 {% endblock %}
