@@ -1,8 +1,9 @@
 from django.contrib.auth import authenticate, login, logout
-from django.db.models import Q
+from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
 from django.shortcuts import render, redirect
 
-from api.models import User, Category, Word, Learning_Category
+from api.models import User, Category, Word, Learning_Category, \
+    Learned_Word, Word_Repetition
 from web.forms import RegistrationForm, AuthForm
 
 
@@ -113,7 +114,20 @@ def category_test(request):
 def categories_wordlist_view(request, category_name):
     try:
         category = Category.objects.get(name=category_name)
-        wordlist = Word.objects.filter(category=category)
+        user = request.user if request.user.is_authenticated else None
+        wordlist = Word.objects.filter(category=category).annotate(
+            status=Case(
+                When(
+                    Exists(Learned_Word.objects.filter(word=OuterRef('pk'), user=user)),
+                    then=Value('learned')
+                ),
+                When(
+                    Exists(Word_Repetition.objects.filter(word=OuterRef('pk'), user=user)),
+                    then=Value('in_progress')
+                ),
+                default=Value('new'),
+                output_field=CharField())
+        ).distinct()
     except Category.DoesNotExist:
         # Либо выбрасывать 404, мол такой страницы нет
         category = None

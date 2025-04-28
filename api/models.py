@@ -56,7 +56,7 @@ class Answer_Attempt(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
 
-class Word_Repetiotion(models.Model):
+class Word_Repetition(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     word = models.ForeignKey(Word, on_delete=models.CASCADE)
     next_review = models.DateTimeField()

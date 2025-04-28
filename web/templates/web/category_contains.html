@@ -7,17 +7,33 @@
 <link rel="stylesheet" href="{% static 'web/css/category.css' %}">
 {% endblock %}
 
+{% block scripts %}
+<script src="{% static 'web/js/words_filter.js' %}"></script>
+{% endblock %}
+
 {% block content %}
 <div class="category-header">
     <h1>{{ category.name }}</h1>
 </div>
 
 <div class="section">
+    <div class="filter-controls">
+        <div class="filter-dropdown">
+            <select id="wordFilter" class="filter-select">
+                <option value="default">Все</option>
+                <option value="status_learned">Выученные</option>
+                <option value="status_in_progress">В процессе</option>
+                <option value="status_new">Новые</option>
+            </select>
+            <div class="dropdown-arrow">▼</div>
+        </div>
+    </div>
+
     <h2>Список слов</h2>
-    <div class="words-list">
+    <div class="words-list" id="wordsList">
         {% for word in wordlist %}
-        <div class="word-row">
-            <span class="english-word">{{ word.word }} / {{ word.transcription }} /</span>
+        <div class="word-row status-{{ word.status }}">
+            <span class="english-word">{{ word.word }} /{{ word.transcription }}/</span>
             <span class="separator">—</span>
             <span class="russian-word">{{ word.translation }}</span>
         </div>
@@ -31,15 +47,13 @@
                     В этой категории пока нет слов
                 </div>
             {% endif %}
-
         {% endfor %}
     </div>
-    <a href="#" class="add-new">Добавить или импортировать слова</a>
 </div>
 
 <div class="section">
     <h2>Тест</h2>
-    <a href="#" class="test-link">Перейти к тесту по категории</a>
+    <a href="{% url 'category_test' %}?category_id={{ category.id }}" class="test-link">Перейти к тесту по категории</a>
 </div>
 
 {% endblock %}

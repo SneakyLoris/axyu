@@ -76,7 +76,7 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='Word_Repetiotion',
+            name='Word_Repetition',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('next_review', models.DateTimeField()),

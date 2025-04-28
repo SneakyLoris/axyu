@@ -15,4 +15,3 @@
 
 - `docker build -t ck_postgres .`
 - `docker run --name ck_postges_container -p 5432:5432 -d ck_postgres`
-

@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RemoveField(
-            model_name='word_repetiotion',
+            model_name='Word_Repetition',
             name='last_interval_minutes',
         ),
     ]

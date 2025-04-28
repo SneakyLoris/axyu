@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view
 from datetime import datetime, timedelta
 import random
 
-from api.models import Category, Learning_Category, Learned_Word, Word, Word_Repetiotion
+from api.models import Category, Learning_Category, Learned_Word, Word, Word_Repetition
 from api.serializers import CategorySerializer
 
 
@@ -63,7 +63,7 @@ def new_word_send_result(request):
             Learned_Word.objects.create(user=user, word_id=word_id)
             message = 'Known word added'
         else:
-            Word_Repetiotion.objects.create(
+            Word_Repetition.objects.create(
                 user=user,
                 word_id=word_id,
                 next_review=timezone.now() + timedelta(seconds=30)
@@ -87,7 +87,7 @@ def get_new_word(request):
         learned_words = Learned_Word.objects.filter(user=request.user)
         learned_words_ids = learned_words.values_list('word_id', flat=True)
 
-        repeat_words = Word_Repetiotion.objects.filter(user=request.user)
+        repeat_words = Word_Repetition.objects.filter(user=request.user)
         repeat_words_ids = repeat_words.values_list('word_id', flat=True)
 
         excluded_word_ids = set(learned_words_ids) | set(repeat_words_ids)
@@ -120,7 +120,7 @@ def get_word_repeat(request):
         user = request.user
         now = timezone.now()
 
-        words_to_repeat = Word_Repetiotion.objects.filter(
+        words_to_repeat = Word_Repetition.objects.filter(
             user=user,
             next_review__lte=now
         )
@@ -160,7 +160,7 @@ def send_repeat_result(request):
         user = request.user
 
         message = ''
-        repetition, created = Word_Repetiotion.objects.get_or_create(user=user, word_id=word_id)
+        repetition, created = Word_Repetition.objects.get_or_create(user=user, word_id=word_id)
 
         if is_known:
             learned = False
