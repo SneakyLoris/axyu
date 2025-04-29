@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import random
+import  json
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -187,7 +188,6 @@ def stats_view(request):
         categories[cat.category.name] = 
     """
 
-
     # результат за неделю
     week_dates = [(datetime.now() - timedelta(days=i)).strftime('%d.%m') for i in range(7)]
     week_progress = [
@@ -197,11 +197,34 @@ def stats_view(request):
 
     # Конец Эвелининого соло
 
+    ### Данные для piePlot
+    learned = len(Learned_Word.objects.filter(user=user))
+    in_progress = len(Word_Repetition.objects.filter(user=user))
+    new_words = len(Word.objects.filter(category__in=categories)) - learned - in_progress
+    set_data = [
+        learned,
+        in_progress,
+        new_words
+    ]
+
+    pie_data = {
+        "labels": ["Learned", "In progress", "Not yet"],
+        "datasets": [{
+            "lables": "some phrase",
+            "data": set_data,
+            "backgroundColor": [
+                'green',
+                'yellow',
+                'red'
+            ],
+        }]
+    }
+
     """
     Список того, что можно визуализировать
     - Изучаемые категории [х]
-    - График посещений страницы/время проведения на сайте []
-    - График выученных слов по дням/неделям/месяцам []
+    - График посещений страницы/время проведения на сайте (lineplot типа времени в день) []
+    - График выученных слов по дням/неделям/месяцам (гистограмма) []
     - Круговая диаграмма выученных слов (всего слов и сколько из них на стадии изучения и выученных) []
     - 
     """
@@ -210,6 +233,7 @@ def stats_view(request):
         'stats': stats,
         'categories': categories,
         'week_progress': week_progress,
+        'pie_data': json.dumps(pie_data),
     }
 
     return render(request, 'web/stats.html', context)

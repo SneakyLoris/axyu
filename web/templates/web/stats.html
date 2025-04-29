@@ -6,6 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'web/css/statistics.css' %}">
 <link rel="stylesheet" href="{% static 'web/css/category.css' %}">
+<link rel="stylesheet" href="{% static 'web/css/plot.css' %}">
 {% endblock %}
 
 {% block scripts %}
@@ -14,59 +15,64 @@
 {% endblock %}
 
 {% block content %}
-    <h1>Мой прогресс в изучении английского</h1>
+<h1>Мой прогресс в изучении английского</h1>
 
-    <div class="stats">
-        <div class="stat-card">
-            <h2>{{ stats.total_words }}</h2>
-            <p>Изучено слов</p>
-        </div>
-        <div class="stat-card">
-            <h2>{{ stats.total_quizzes }}</h2>
-            <p>Повторено слов</p>
-        </div>
-        <div class="stat-card">
-            <h2>{{ stats.success_rate }}%</h2>
-            <p>НИЧЕГО ТУТ НЕ ОТСЛЕЖИВАЕТСЯ</p>
-        </div>
+<div class="stats">
+    <div class="stat-card">
+        <h2>{{ stats.total_words }}</h2>
+        <p>Изучено слов</p>
     </div>
+    <div class="stat-card">
+        <h2>{{ stats.total_quizzes }}</h2>
+        <p>Повторено слов</p>
+    </div>
+    <div class="stat-card">
+        <h2>{{ stats.success_rate }}%</h2>
+        <p>НИЧЕГО ТУТ НЕ ОТСЛЕЖИВАЕТСЯ</p>
+    </div>
+</div>
 
-    <h2>Избранные категории</h2>
+<h2>Избранные категории</h2>
 
-    <div class="categories">
-        {% for category in categories %}
-            {% if forloop.counter0|divisibleby:4 %}<div class="category-row">{% endif %}
+<div class="categories">
+    {% for category in categories %}
+    {% if forloop.counter0|divisibleby:4 %}
+    <div class="category-row">{% endif %}
 
-            <a href="{% url 'categories_wordlist' category.name %}" class="category-link">
-                <div class="category-card">
-                    <h3>{{ category.name }}</h3>
-                </div>
-                {% if user.is_authenticated %}
-                <input type="checkbox"
-                        id="cat-{{ category.id }}"
-                        class="category-checkbox"
-                        data-id="{{ category.id }}"
-                        {% if category.id in user_selected_categories %}checked{% endif %}>
-                <label for="cat-{{ category.id }}" title="Добавить категорию на изучение"></label>
-                {% endif %}
-            </a>
-
-            {% if forloop.counter|divisibleby:4 or forloop.last %}</div>{% endif %}
-        {% empty %}
-            <div class="empty-categories">
-                <p>Пока нет ни одной категории</p>
+        <a href="{% url 'categories_wordlist' category.name %}" class="category-link">
+            <div class="category-card">
+                <h3>{{ category.name }}</h3>
             </div>
-        {% endfor %}
+            {% if user.is_authenticated %}
+            <input type="checkbox"
+                   id="cat-{{ category.id }}"
+                   class="category-checkbox"
+                   data-id="{{ category.id }}"
+                   {% if category.id in user_selected_categories %}checked{% endif %}>
+            <label for="cat-{{ category.id }}" title="Добавить категорию на изучение"></label>
+            {% endif %}
+        </a>
+
+        {% if forloop.counter|divisibleby:4 or forloop.last %}
     </div>
+    {% endif %}
+    {% empty %}
+    <div class="empty-categories">
+        <p>Пока нет ни одной категории</p>
+    </div>
+    {% endfor %}
+</div>
 
-    <h2>Графики всякие</h2>
+<h2>Графики всякие</h2>
 
-    <div class="plots" id="plots">
+
+<div class="plots" id="plots">
+    <div class="plots-row">
         <canvas id="myChart"></canvas>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
-            const ctx = document.getElementById('myChart');
-            new Chart(ctx, {
+            const bar_ctx = document.getElementById('myChart');
+            new Chart(bar_ctx, {
                 type: 'bar',
                 data: {
                     labels: ['A', 'B', 'C'],
@@ -78,26 +84,33 @@
             });
         </script>
 
-
+        <canvas id="piePlot"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const pie_ctx = document.getElementById('piePlot');
+            new Chart(pie_ctx, {
+                type: 'doughnut',
+                data: {{ pie_data|safe }}
+            });
+        </script>
     </div>
+</div>
 
 
-
-
-    <h2>Последние 7 дней</h2>
-    <table>
-        <tr>
-            <th>Дата</th>
-            <th>Новые слова</th>
-            <th>Тесты</th>
-        </tr>
-        {% for day in week_progress %}
-        <tr>
-            <td>{{ day.date }}</td>
-            <td>{{ day.words }}</td>
-            <td>{{ day.quizzes }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+<h2>Последние 7 дней</h2>
+<table>
+    <tr>
+        <th>Дата</th>
+        <th>Новые слова</th>
+        <th>Тесты</th>
+    </tr>
+    {% for day in week_progress %}
+    <tr>
+        <td>{{ day.date }}</td>
+        <td>{{ day.words }}</td>
+        <td>{{ day.quizzes }}</td>
+    </tr>
+    {% endfor %}
+</table>
 
 {% endblock %}
