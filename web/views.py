@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from random import random
+import random
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -61,18 +61,17 @@ def logout_view(request):
     return redirect("main")
 
 
-def stats_view(request):
-    return render(request, "web/stats.html")
-
-
 def learning_view(request):
     return render(request, "web/learning.html")
+
 
 def learning_new_words_view(request):
     return render(request, "web/new_words.html")
 
+
 def learning_repeat_view(request):
     return render(request, "web/repeat_words.html")
+
 
 def learning_tests_view(request):
     categories = Category.objects.filter(
@@ -103,6 +102,7 @@ def categories_view(request):
         "user_selected_categories": user_selected_categories
     })
 
+
 def category_test(request):
     category_id = request.GET.get('category_id', '')
     try:
@@ -112,7 +112,7 @@ def category_test(request):
         category = None
     return render(request, "web/tests.html", {
         "category": category,
-    })  
+    })
 
 
 def categories_wordlist_view(request, category_name):
@@ -162,13 +162,14 @@ def feedback_view(request):
             return redirect('feedback')
     else:
         form = FeedbackForm()
-    
+
     return render(request, 'web/feedback.html', {'form': form})
 
 
-def ultra_simple_dashboard(request):
+def stats_view(request):
     user = request.user
 
+    # Эвелинино
     stats = {
         'total_words': random.randint(50, 200),
         'total_quizzes': random.randint(10, 50),
@@ -190,11 +191,12 @@ def ultra_simple_dashboard(request):
         for date in week_dates
     ]
 
+    # Конец Эвелининого соло
+
     context = {
         'stats': stats,
         'categories': categories,
         'week_progress': week_progress,
     }
 
-    # вот тут гпт
     return render(request, 'web/stats.html', context)
