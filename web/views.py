@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import random
-import  json
+import json
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -8,7 +8,7 @@ from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
 from django.shortcuts import render, redirect
 
 from api.models import User, Category, Word, Learning_Category, \
-    Learned_Word, Word_Repetition, Answer_Attempt
+    Learned_Word, Word_Repetition, Answer_Attempt, Session
 from web.forms import RegistrationForm, AuthForm, FeedbackForm
 
 
@@ -30,12 +30,9 @@ def registration_view(request):
             user.save()
             is_success = True
 
-            print(form.cleaned_data)
-
     return render(request, "web/registration.html", {
         "form": form,
         "is_success": is_success,
-
     })
 
 
@@ -50,6 +47,7 @@ def auth_view(request):
                 form.add_error(None, "Введены неверные данные")
             else:
                 login(request, user)
+                Session.objects.create(user=user)
                 return redirect("main")
 
     return render(request, "web/auth.html", {
@@ -58,6 +56,15 @@ def auth_view(request):
 
 
 def logout_view(request):
+    user = request.user
+
+    try:
+        session = Session.objects.order_by("-start_time").filter(user=user).first()
+        session.end_time = datetime.now()
+        session.save()
+    except Session.DoesNotExist:
+        Session.objects.create(user=user, end_time=datetime.now())
+
     logout(request)
     return redirect("main")
 
@@ -106,11 +113,13 @@ def categories_view(request):
 
 def category_test(request):
     category_id = request.GET.get('category_id', '')
+
     try:
         category = Category.objects.get(id=category_id)
     except Category.DoesNotExist:
         # Либо выбрасывать 404, мол такой страницы нет
         category = None
+
     return render(request, "web/tests.html", {
         "category": category,
     })
@@ -180,14 +189,6 @@ def stats_view(request):
         'success_rate': random.randint(60, 95),
     }
 
-    categories = [l_cat.category for l_cat in Learning_Category.objects.filter(user=user)]
-
-    """
-    Хочу добавить к каждой категории сколько слов выучено
-    for cat in cats:
-        categories[cat.category.name] = 
-    """
-
     # результат за неделю
     week_dates = [(datetime.now() - timedelta(days=i)).strftime('%d.%m') for i in range(7)]
     week_progress = [
@@ -196,6 +197,15 @@ def stats_view(request):
     ]
 
     # Конец Эвелининого соло
+
+    ### Список изучаемых категорий
+    categories = [l_cat.category for l_cat in Learning_Category.objects.filter(user=user)]
+
+    """
+    Хочу добавить к каждой категории сколько слов выучено
+    for cat in cats:
+        categories[cat.category.name] = 
+    """
 
     ### Данные для piePlot
     learned = len(Learned_Word.objects.filter(user=user))
@@ -220,13 +230,17 @@ def stats_view(request):
         }]
     }
 
+    ### Данные для графика посещения
+    sessions = Session.objects.filter(user=user)
+
+    print(sessions)
+
     """
     Список того, что можно визуализировать
     - Изучаемые категории [х]
+    - Круговая диаграмма выученных слов (всего слов и сколько из них на стадии изучения и выученных) [x]
     - График посещений страницы/время проведения на сайте (lineplot типа времени в день) []
     - График выученных слов по дням/неделям/месяцам (гистограмма) []
-    - Круговая диаграмма выученных слов (всего слов и сколько из них на стадии изучения и выученных) []
-    - 
     """
 
     context = {
