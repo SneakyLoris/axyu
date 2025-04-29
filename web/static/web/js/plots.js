@@ -10,3 +10,21 @@ const bar_ctx = document.getElementById('myChart');
                 }
             });
 
+const pie_ctx = document.getElementById('piePlot');
+new Chart(pie_ctx, {
+    type: 'doughnut',
+    data: JSON.parse(document.getElementById('pie-data').textContent)
+});
+
+
+const session_time_ctx = document.getElementById('sessionTimePlot');
+new Chart(session_ctx, {
+    type: 'line',
+    data: JSON.parse(document.getElementById('session-time-data').textContent)
+});
+
+const session_count_ctx = document.getElementById('sessionCountPlot');
+new Chart(session_ctx, {
+    type: 'bar',
+    data: JSON.parse(document.getElementById('session-count-data').textContent)
+});

@@ -12,6 +12,8 @@
 {% block scripts %}
 <script src="{% static 'web/js/cookie_utils.js' %}"></script>
 <script src="{% static 'web/js/category.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'web/js/plots.js' %}"></script>
 {% endblock %}
 
 {% block content %}
@@ -67,46 +69,24 @@
 
 
 <div class="plots-container" id="plots">
+    <script id="pie-data" type="application/json">{{ pie_data|safe }}</script>
+    <script id="session-time-data" type="application/json">{{ session_time_data|safe }}</script>
+    <script id="session-count-data" type="application/json">{{ session_count_data|safe }}</script>
+
     <div class="plot">
         <canvas id="myChart"></canvas>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="{% static 'web/js/plots.js'%}"></script>
     </div>
 
     <div class="plot">
         <canvas id="piePlot"></canvas>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script>
-            const pie_ctx = document.getElementById('piePlot');
-            new Chart(pie_ctx, {
-                type: 'doughnut',
-                data: {{ pie_data|safe }}
-            });
-        </script>
     </div>
 
     <div class="plot">
         <canvas id="sessionTimePlot"></canvas>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script>
-            const session_time_ctx = document.getElementById('sessionTimePlot');
-            new Chart(session_ctx, {
-                type: 'line',
-                data: {{ session_time_data|safe }}
-            });
-        </script>
     </div>
 
     <div class="plot">
         <canvas id="sessionCountPlot"></canvas>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script>
-            const session_count_ctx = document.getElementById('sessionCountPlot');
-            new Chart(session_ctx, {
-                type: 'bar',
-                data: {{ session_count_data|safe }}
-            });
-        </script>
     </div>
 </div>
 
