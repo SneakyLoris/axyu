@@ -66,24 +66,14 @@
 <h2>Графики всякие</h2>
 
 
-<div class="plots" id="plots">
-    <div class="plots-row">
+<div class="plots-container" id="plots">
+    <div class="plot">
         <canvas id="myChart"></canvas>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script>
-            const bar_ctx = document.getElementById('myChart');
-            new Chart(bar_ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['A', 'B', 'C'],
-                    datasets: [{
-                        label: 'Пример',
-                        data: [12, 19, 3],
-                    }]
-                }
-            });
-        </script>
+        <script src="{% static 'web/js/plots.js'%}"></script>
+    </div>
 
+    <div class="plot">
         <canvas id="piePlot"></canvas>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
@@ -93,7 +83,9 @@
                 data: {{ pie_data|safe }}
             });
         </script>
+    </div>
 
+    <div class="plot">
         <canvas id="sessionTimePlot"></canvas>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
@@ -103,7 +95,9 @@
                 data: {{ session_time_data|safe }}
             });
         </script>
+    </div>
 
+    <div class="plot">
         <canvas id="sessionCountPlot"></canvas>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
