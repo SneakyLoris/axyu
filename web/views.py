@@ -1,10 +1,11 @@
 from django.contrib.auth import authenticate, login, logout
+from django.contrib import messages
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
 from django.shortcuts import render, redirect
 
 from api.models import User, Category, Word, Learning_Category, \
     Learned_Word, Word_Repetition
-from web.forms import RegistrationForm, AuthForm
+from web.forms import RegistrationForm, AuthForm, FeedbackForm
 
 
 def main_view(request):
@@ -147,3 +148,16 @@ def add_category_view(request):
 def remove_category_view(request):
     # БУДЕТ УДАЛЕНИЕ КАТЕГОРИИ
     return redirect("web/main.html")
+
+
+def feedback_view(request):
+    if request.method == 'POST':
+        form = FeedbackForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Спасибо за ваше сообщение! Мы свяжемся с вами в ближайшее время.')
+            return redirect('feedback')
+    else:
+        form = FeedbackForm()
+    
+    return render(request, 'web/feedback.html', {'form': form})

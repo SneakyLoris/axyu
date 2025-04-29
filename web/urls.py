@@ -21,4 +21,5 @@ urlpatterns = [
 
     path('category/add', add_category_view, name='add_category'),
     path('category/remove', remove_category_view, name='remove_category'),
+    path('feedback/', feedback_view, name='feedback'),
 ]
