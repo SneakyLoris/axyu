@@ -5,6 +5,12 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'web/css/statistics.css' %}">
+<link rel="stylesheet" href="{% static 'web/css/category.css' %}">
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'web/js/cookie_utils.js' %}"></script>
+<script src="{% static 'web/js/category.js' %}"></script>
 {% endblock %}
 
 {% block content %}
@@ -17,21 +23,66 @@
         </div>
         <div class="stat-card">
             <h2>{{ stats.total_quizzes }}</h2>
-            <p>Пройдено тестов</p>
+            <p>Повторено слов</p>
         </div>
         <div class="stat-card">
             <h2>{{ stats.success_rate }}%</h2>
-            <p>Успешность</p>
+            <p>НИЧЕГО ТУТ НЕ ОТСЛЕЖИВАЕТСЯ</p>
         </div>
     </div>
 
-    <h2>Слова по категориям</h2>
-    {% for name, count in categories.items %}
-    <div class="category">
-        <div>{{ name }}</div>
-        <div class="category-bar" style="width: {{ count }}%">{{ count }}</div>
+    <h2>Избранные категории</h2>
+
+    <div class="categories">
+        {% for category in categories %}
+            {% if forloop.counter0|divisibleby:4 %}<div class="category-row">{% endif %}
+
+            <a href="{% url 'categories_wordlist' category.name %}" class="category-link">
+                <div class="category-card">
+                    <h3>{{ category.name }}</h3>
+                </div>
+                {% if user.is_authenticated %}
+                <input type="checkbox"
+                        id="cat-{{ category.id }}"
+                        class="category-checkbox"
+                        data-id="{{ category.id }}"
+                        {% if category.id in user_selected_categories %}checked{% endif %}>
+                <label for="cat-{{ category.id }}" title="Добавить категорию на изучение"></label>
+                {% endif %}
+            </a>
+
+            {% if forloop.counter|divisibleby:4 or forloop.last %}</div>{% endif %}
+        {% empty %}
+            <div class="empty-categories">
+                <p>Пока нет ни одной категории</p>
+            </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+
+    <h2>Графики всякие</h2>
+
+    <div class="plots" id="plots">
+        <canvas id="myChart"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+        <script>
+            const ctx = document.getElementById('myChart');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['A', 'B', 'C'],
+                    datasets: [{
+                        label: 'Пример',
+                        data: [12, 19, 3],
+                    }]
+                }
+            });
+        </script>
+
+
+    </div>
+
+
+
 
     <h2>Последние 7 дней</h2>
     <table>

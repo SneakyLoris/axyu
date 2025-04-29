@@ -7,7 +7,7 @@ from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
 from django.shortcuts import render, redirect
 
 from api.models import User, Category, Word, Learning_Category, \
-    Learned_Word, Word_Repetition
+    Learned_Word, Word_Repetition, Answer_Attempt
 from web.forms import RegistrationForm, AuthForm, FeedbackForm
 
 
@@ -170,21 +170,25 @@ def stats_view(request):
     user = request.user
 
     # Эвелинино
+    total_learned_words = len(Learned_Word.objects.filter(user=user))
+    total_repetitions = len(Answer_Attempt.objects.filter(user=user))
+
     stats = {
-        'total_words': random.randint(50, 200),
-        'total_quizzes': random.randint(10, 50),
+        'total_words': total_learned_words,
+        'total_quizzes': total_repetitions,
         'success_rate': random.randint(60, 95),
     }
 
-    # категории
-    categories = {
-        'Глаголы': random.randint(10, 40),
-        'Существительные': random.randint(10, 40),
-        'Прилагательные': random.randint(5, 20),
-        'Фразы': random.randint(5, 15),
-    }
+    categories = [l_cat.category for l_cat in Learning_Category.objects.filter(user=user)]
 
-    # рузультат за неделю
+    """
+    Хочу добавить к каждой категории сколько слов выучено
+    for cat in cats:
+        categories[cat.category.name] = 
+    """
+
+
+    # результат за неделю
     week_dates = [(datetime.now() - timedelta(days=i)).strftime('%d.%m') for i in range(7)]
     week_progress = [
         {'date': date, 'words': random.randint(1, 10), 'quizzes': random.randint(0, 3)}
@@ -195,10 +199,10 @@ def stats_view(request):
 
     """
     Список того, что можно визуализировать
-    - Изучаемые категории
-    - График посещений страницы/время проведения на сайте
-    - График выученных слов по дням/неделям/месяцам
-    - Круговая диаграмма выученных слов (всего слов и сколько из них на стадии изучения и выученных)
+    - Изучаемые категории [х]
+    - График посещений страницы/время проведения на сайте []
+    - График выученных слов по дням/неделям/месяцам []
+    - Круговая диаграмма выученных слов (всего слов и сколько из них на стадии изучения и выученных) []
     - 
     """
 
