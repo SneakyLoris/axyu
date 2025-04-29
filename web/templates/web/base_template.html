@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{% static 'web/css/base.css' %}">
     <link rel="stylesheet" href="{% static 'web/css/header.css' %}">
     <link rel="stylesheet" href="{% static 'web/css/footer.css' %}">
+    <script src="{% static 'web/js/base.js' %}"></script>
     {% block extra_css %}{% endblock %}
     {% block extra_js %}{% endblock %}
 </head>
@@ -22,17 +23,26 @@
 
                 <nav class="nav-menu">
                     <a href="{% url 'main' %}">Главная</a>
-                    <a href="{% url 'learning' %}">Учить слова</a>
-                    <a href="{% url 'categories' %}">Категории</a>
                     {% if user.is_authenticated %}
-                        <a href="{% url 'stats' %}">Моя успеваемость</a>
-                    {% endif %}
-                    <a href="{% url 'feedback' %}">Обратная связь</a>
-                    {% if user.is_authenticated %}
-                        <a href="{% url 'logout' %}">Выйти</a>
+                        <a href="{% url 'learning' %}">учить слова</a>
                     {% else %}
-                        <a href="{% url 'registration' %}">Регистрация</a>
-                        <a href="{% url 'login' %}">Войти</a>
+                        <a href="{% url 'login' %}">учить слова</a>
+                    {% endif %}
+                    <a href="{% url 'categories' %}">словарь</a>
+                    
+                    {% if user.is_authenticated %}
+                    <div class="user-dropdown" id="userDropdown">
+                        <button class="user-avatar" id="userAvatar">
+                            {{ user.username|first|upper }}
+                        </button>
+                        <div class="dropdown-content" id="dropdownContent">
+                            <a href="{% url 'stats' %}">Моя успеваемость</a>
+                            <a href="{% url 'feedback' %}">обратная связь</a>
+                            <a href="{% url 'logout' %}">Выйти</a>
+                        </div>
+                    </div>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="login-btn">Войти</a>
                     {% endif %}
                 </nav>
             </div>

@@ -6,31 +6,40 @@
 {% endblock %}
 
 {% block content %}
-<form action="" method="post">
-    {% csrf_token %}
-    
-    {% if form.non_field_errors %}
-        <div class="form-errors">
-            {{ form.non_field_errors }}
+<div class="auth-container">
+    <form action="" method="post" class="auth-form">
+        {% csrf_token %}
+        
+        <h2 class="auth-title">Вход в аккаунт</h2>
+        
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+        
+        <div class="form-field">
+            <label for="{{ form.username.id_for_label }}">Имя пользователя:</label>
+            {{ form.username }}
+            {% if form.username.errors %}
+                <div class="field-errors">{{ form.username.errors }}</div>
+            {% endif %}
         </div>
-    {% endif %}
-    
-    <div class="form-field">
-        <label for="{{ form.username.id_for_label }}">Имя пользователя:</label>
-        {{ form.username }}
-        {% if form.username.errors %}
-            <div class="field-errors">{{ form.username.errors }}</div>
-        {% endif %}
-    </div>
-    
-    <div class="form-field">
-        <label for="{{ form.password.id_for_label }}">Пароль:</label>
-        {{ form.password }}
-        {% if form.password.errors %}
-            <div class="field-errors">{{ form.password.errors }}</div>
-        {% endif %}
-    </div>
-    
-    <button type="submit" class="submit-button">Войти</button>
-</form>
+        
+        <div class="form-field">
+            <label for="{{ form.password.id_for_label }}">Пароль:</label>
+            {{ form.password }}
+            {% if form.password.errors %}
+                <div class="field-errors">{{ form.password.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <button type="submit" class="submit-button">Войти</button>
+        
+        <div class="auth-links">
+            <span>Ещё нет аккаунта?</span>
+            <a href="{% url 'registration' %}" class="auth-link">Зарегистрироваться</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

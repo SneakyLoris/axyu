@@ -32,7 +32,7 @@
                     class="category-checkbox"
                     data-id="{{ category.id }}"
                     {% if category.id in user_selected_categories %}checked{% endif %}>
-            <label for="cat-{{ category.id }}"></label>
+            <label for="cat-{{ category.id }}" title="Добавить категорию на изучение"></label>
             {% endif %}
         </a>
 
