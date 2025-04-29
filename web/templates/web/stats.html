@@ -93,6 +93,26 @@
                 data: {{ pie_data|safe }}
             });
         </script>
+
+        <canvas id="sessionTimePlot"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const session_time_ctx = document.getElementById('sessionTimePlot');
+            new Chart(session_ctx, {
+                type: 'line',
+                data: {{ session_time_data|safe }}
+            });
+        </script>
+
+        <canvas id="sessionCountPlot"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const session_count_ctx = document.getElementById('sessionCountPlot');
+            new Chart(session_ctx, {
+                type: 'bar',
+                data: {{ session_count_data|safe }}
+            });
+        </script>
     </div>
 </div>
 

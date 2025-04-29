@@ -232,6 +232,34 @@ def stats_view(request):
 
     ### Данные для графика посещения
     sessions = Session.objects.filter(user=user)
+    set_data = []
+
+    set_data = []
+    visit_time_dataset = {
+        "labels": [0, 3, 6, 9, 12],
+        "datasets": [{
+            "lables": "some phrase",
+            "data": set_data,
+            "backgroundColor": [
+                'green',
+                'yellow',
+                'red'
+            ],
+        }]
+    }
+
+    visit_count_dataset = {
+        "labels": [0, 3, 6, 9, 12],
+        "datasets": [{
+            "lables": "some phrase",
+            "data": set_data,
+            "backgroundColor": [
+                'green',
+                'yellow',
+                'red'
+            ],
+        }]
+    }
 
     print(sessions)
 
