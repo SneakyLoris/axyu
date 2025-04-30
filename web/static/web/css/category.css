@@ -1,5 +1,4 @@
-/* category.html */
-
+/* ===== Общие стили категорий ===== */
 .categories {
     display: flex;
     flex-wrap: wrap;
@@ -15,6 +14,34 @@
     margin-bottom: 20px;
 }
 
+.category-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.empty-categories {
+    width: 100%;
+    text-align: center;
+    padding: 30px;
+    color: var(--text-light);
+}
+
+/* ===== Карточки категорий ===== */
+.category-card {
+    background: var(--lighter-bg-color);
+    border-radius: 10px;
+    padding: 15px 20px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.category-card h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--secondary-color);
+}
+
 .category-link {
     display: flex;
     align-items: center;
@@ -24,21 +51,12 @@
     padding-right: 30px;
 }
 
-.category-card {
-    background: #ffffff;
-    border-radius: 10px;
-    padding: 15px 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    min-width: 200px;
+.category-link:hover .category-card {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.category-card h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: #2c3e50;
-}
-
+/* ===== Чекбокс для избранного ===== */
 .category-checkbox {
     position: absolute;
     opacity: 0;
@@ -60,42 +78,21 @@
 }
 
 .category-checkbox:checked + label {
-    color: #f1c40f;
+    color: var(--accent-color);
     transform: scale(1.2);
 }
 
-.empty-categories {
-    width: 100%;
-    text-align: center;
-    padding: 30px;
-    color: #7f8c8d;
-}
-
-.category-link:hover .category-card {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.category-header {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-
-
-
-/* category_cntains.html */
-
+/* ===== Стили для страницы содержимого категории ===== */
 .section {
-    background-color: white;
+    background-color: var(--lighter-bg-color);
     border-radius: 8px;
     padding: 25px;
     margin-bottom: 30px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    box-shadow: var(--shadow-sm);
 }
 
 .section h2 {
-    color: #4285f4;
+    color: var(--primary-color);
     margin-top: 0;
     padding-bottom: 10px;
     border-bottom: 1px solid #eee;
@@ -103,73 +100,6 @@
 
 .words-list {
     margin: 20px 0;
-}
-
-.word-row:hover {
-    background-color: #f0f0f0;
-}
-
-.english-word {
-    font-weight: 600;
-    color: #333;
-    flex: 1;
-}
-
-.russian-word {
-    flex: 1;
-    color: #555;
-}
-
-.test-link {
-    display: block;
-    text-align: center;
-    color: #4285f4;
-    margin-top: 20px;
-    text-decoration: none;
-}
-
-.test-link:hover {
-    text-decoration: underline;
-}
-
-
-
-
-
-
-
-
-
-
-.filter-controls {
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: flex-end;
-}
-
-.filter-dropdown {
-    position: relative;
-    width: 250px;
-}
-
-.filter-select {
-    width: 100%;
-    padding: 10px 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: white;
-    appearance: none;
-    font-size: 16px;
-    cursor: pointer;
-}
-
-.dropdown-arrow {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-    color: #666;
 }
 
 .word-row {
@@ -182,6 +112,10 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     position: relative;
     overflow: hidden;
+}
+
+.word-row:hover {
+    background-color: #f0f0f0;
 }
 
 .word-row::before {
@@ -205,10 +139,15 @@
     background-color: #ff9191;
 }
 
-/* Стили для текста */
 .english-word {
     font-weight: 500;
-    color: #333;
+    color: var(--text-color);
+    flex: 1;
+}
+
+.russian-word {
+    flex: 1;
+    color: #555;
 }
 
 .separator {
@@ -216,7 +155,50 @@
     color: #999;
 }
 
-/* Убираем стандартный статус */
 .word-status {
     display: none;
+}
+
+.test-link {
+    display: block;
+    text-align: center;
+    color: var(--primary-color);
+    margin-top: 20px;
+    text-decoration: none;
+}
+
+.test-link:hover {
+    text-decoration: underline;
+}
+
+/* ===== Элементы управления фильтрацией ===== */
+.filter-controls {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.filter-dropdown {
+    position: relative;
+    width: 250px;
+}
+
+.filter-select {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: var(--lighter-bg-color);
+    appearance: none;
+    font-size: var(--font-size-base);
+    cursor: pointer;
+}
+
+.dropdown-arrow {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #666;
 }

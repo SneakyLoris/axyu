@@ -1,15 +1,16 @@
-/* feedback.css - Modern Design */
+/* ===== Основные стили контейнера ===== */
 .feedback-container {
     max-width: 600px;
     margin: 40px auto;
     padding: 40px;
-    background: #ffffff;
+    background: var(--lighter-bg-color);
     border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-lg);
+    animation: fadeIn 0.5s ease-out forwards;
 }
 
 .feedback-container h2 {
-    color: #2c3e50;
+    color: var(--secondary-color);
     margin-bottom: 24px;
     text-align: center;
     font-size: 28px;
@@ -17,13 +18,14 @@
 }
 
 .feedback-container p {
+    color: var(--text-light);
+    font-size: var(--font-size-base);
+    line-height: 1.6;
     margin-bottom: 32px;
     text-align: center;
-    color: #7f8c8d;
-    font-size: 16px;
-    line-height: 1.6;
 }
 
+/* ===== Форма обратной связи ===== */
 .feedback-form {
     display: flex;
     flex-direction: column;
@@ -40,7 +42,7 @@
     left: 15px;
     background: white;
     padding: 0 8px;
-    color: #4285f4;
+    color: var(--primary-color);
     font-size: 14px;
     font-weight: 500;
 }
@@ -51,13 +53,13 @@
     padding: 16px;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
-    font-size: 16px;
+    font-size: var(--font-size-base);
     transition: all 0.3s ease;
 }
 
 .feedback-form input:focus,
 .feedback-form textarea:focus {
-    border-color: #4285f4;
+    border-color: var(--primary-color);
     outline: none;
     box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
 }
@@ -67,18 +69,19 @@
     resize: vertical;
 }
 
+/* ===== Кнопка отправки ===== */
 .submit-btn {
-    background-color: #4285f4;
+    background-color: var(--primary-color);
     color: white;
     padding: 16px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: var(--font-size-base);
     font-weight: 600;
-    transition: all 0.3s ease;
     margin-top: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
 }
 
 .submit-btn:hover {
@@ -91,26 +94,23 @@
     transform: translateY(0);
 }
 
+/* ===== Уведомления ===== */
 .alert {
     padding: 16px;
-    margin-bottom: 24px;
     border-radius: 8px;
-    text-align: center;
     font-size: 15px;
+    margin-bottom: 24px;
+    text-align: center;
 }
 
 .alert-success {
     background-color: #e8f5e9;
-    color: #2e7d32;
+    color: #a5d6a7;
     border: 1px solid #c8e6c9;
 }
 
-/* Анимация при появлении формы */
+/* ===== Анимации ===== */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-.feedback-container {
-    animation: fadeIn 0.5s ease-out forwards;
 }

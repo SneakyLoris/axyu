@@ -1,5 +1,6 @@
+/* ===== Основные стили футера ===== */
 footer {
-    background-color: #333;
+    background-color: var(--footer-bg);
     color: white;
     padding: 40px 0 20px;
     margin-top: 50px;
@@ -7,6 +8,7 @@ footer {
     flex: 0 0 auto;
 }
 
+/* ===== Контент футера ===== */
 .footer-content {
     display: flex;
     justify-content: space-between;
@@ -23,7 +25,7 @@ footer {
 }
 
 .footer-section h3 {
-    color: #4285f4;
+    color: var(--primary-color);
     margin-bottom: 20px;
     font-size: 1.2rem;
 }
@@ -33,18 +35,20 @@ footer {
     line-height: 1.6;
 }
 
-.footer-bottom {
-    text-align: center;
-    padding-top: 20px;
-    margin-top: 20px;
-    border-top: 1px solid #444;
-}
-
+/* ===== Контактные ссылки ===== */
 .contact-email {
-    color: #4285f4;
+    color: var(--primary-color);
     text-decoration: none;
 }
 
 .contact-email:hover {
     text-decoration: underline;
+}
+
+/* ===== Нижняя часть футера ===== */
+.footer-bottom {
+    text-align: center;
+    padding-top: 20px;
+    margin-top: 20px;
+    border-top: 1px solid #444;
 }

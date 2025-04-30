@@ -1,0 +1,34 @@
+:root {
+    /* Цвета */
+    --primary-color: #4285f4;
+    --secondary-color: #2c3e50;
+    --accent-color: #f1c40f;
+    --text-color: #333;
+    --text-light: #7f8c8d;
+    --bg-color: #f5f5f5;
+    --lighter-bg-color: #ffffff;
+    --border-color: #ddd;
+    --error-color: #e74c3c;
+    --success-color: #2e7d32;
+    
+    --header-bg: var(--primary-color);
+    --footer-bg: #333;
+
+    --green-color: #a5d6a7;
+    --yellow-color: #fff082;
+    --red-color: #ff9191;
+  
+    /* Шрифты */
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-size-base: 16px;
+  
+    /* Тени */
+    --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  
+    /* Отступы */
+    --space-sm: 10px;
+    --space-md: 20px;
+    --space-lg: 30px; 
+  }
