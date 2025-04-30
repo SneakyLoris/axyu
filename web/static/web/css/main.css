@@ -25,4 +25,5 @@
     background-color: var(--lighter-bg-color);
     border-radius: 8px;
     box-shadow: var(--shadow-sm);
+    font-size: 1.2rem;
 }
