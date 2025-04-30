@@ -5,9 +5,16 @@
 <link rel="stylesheet" href="{% static 'web/css/main.css' %}">
 {% endblock %}
 
+{% block extra_js %}
+<script src="{% static 'web/js/search.js' %}"></script>
+{% endblock %}
+
 {% block content %}
-<div class="search-bar">
-    <input type="text" placeholder="Q Искать слова...">
+<div class="search-container">
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="🔍 Искать слова...">
+    </div>
+    <div id="searchResults" class="search-results"></div>
 </div>
 
 <div class="intro">

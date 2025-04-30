@@ -30,4 +30,5 @@ document.addEventListener('DOMContentLoaded', function() {
     dropdownContent.addEventListener('mouseleave', function() {
         dropdownContent.classList.remove('show');
     });
+
 });
