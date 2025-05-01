@@ -11,5 +11,6 @@ urlpatterns = [
     path('learning/get_word_repeat', views.get_word_repeat, name = 'get_word_repeat'),
     path('learning/send_repeat_result', views.send_repeat_result, name = 'send_repeat_result'),
     path('learning/get_test_questions', views.get_test_questions, name = 'get_test_questions'),
-    path('search_words/', views.search_words, name='api_search_words')
+    path('search_words/', views.search_words, name='api_search_words'),
+    path('track_session/', views.track_session, name='track_session')
 ]

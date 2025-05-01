@@ -21,7 +21,6 @@ function on_change() {
                 if (!row.classList.contains('status-new')) row.style.display = 'none';
                 break;
             case 'default':
-                // Показываем все строки
                 break;
         }
     });

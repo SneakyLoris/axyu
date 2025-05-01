@@ -7,8 +7,9 @@ from rest_framework.decorators import api_view
 
 from datetime import datetime, timedelta
 import random
+from urllib.parse import urlparse, parse_qs
 
-from api.models import Category, Learning_Category, Learned_Word, Word, Word_Repetition
+from api.models import Category, Learning_Category, Learned_Word, Word, Word_Repetition, Learning_Session
 from api.serializers import CategorySerializer
 
 
@@ -155,10 +156,10 @@ def get_word_repeat(request):
 def send_repeat_result(request):
     try:
         data = request.data
+        user = request.user
 
         word_id = data.get('word_id')
         is_known = data.get('is_known')
-        user = request.user
 
         message = ''
         repetition, created = Word_Repetition.objects.get_or_create(user=user, word_id=word_id)
@@ -268,3 +269,42 @@ def search_words(request):
             })
 
     return JsonResponse({'results': results})
+
+@api_view(['POST'])
+def track_session(request):
+    try:
+        data = request.data
+        user = request.user
+        
+        method = ''
+        page_url = data['page_url']
+        parsed_url = urlparse(page_url)
+        page = parsed_url.path.split('/')[-1]
+        query_params = parse_qs(parsed_url.query)
+        category_id = query_params.get('category_id', [None])[0]
+        category = None
+
+        if category_id != None:
+            category = Category.objects.get(id=category_id)
+
+        match page:
+            case 'new_words':
+                method = 'new_words'
+            case 'repeat':
+                method = 'repeat'
+            case 'test':
+                method = 'test'
+
+        Learning_Session.objects.create(
+            user=user,
+            start_time=data['session_start'],
+            end_time=data['session_end'],
+            duration=data['duration'],
+            method=method,
+            category=category
+        )
+
+        return JsonResponse({'status': 'success', 'message': 'session was recorded'}, status=200)
+    
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

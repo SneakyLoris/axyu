@@ -41,17 +41,28 @@ def on_category_delete(sender, instance, **kwargs):
         if word.category.count() <= 1:
             word.delete()
 
+class Learning_Session(models.Model):
+    class Method(models.TextChoices):
+        NEW_WORDS = "new_words", "New Words",
+        REPEAT = "repeat", "Repeat"
+        TEST = "test", "Test"
 
-class Session(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
-
+    duration = models.IntegerField(null=False, default=-1)
+    method = models.CharField(
+        max_length=20,
+        choices=Method.choices,
+        default=Method.NEW_WORDS,
+        null=False
+    )
+    category = models.ForeignKey(Category, null=True, on_delete=models.CASCADE)
 
 class Answer_Attempt(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     word = models.ForeignKey(Word, on_delete=models.CASCADE)
-    session = models.ForeignKey(Session, on_delete=models.CASCADE)
+    session = models.ForeignKey(Learning_Session, on_delete=models.CASCADE)
     is_correct = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 

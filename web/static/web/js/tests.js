@@ -1,3 +1,5 @@
+const csrftoken = getCookie('csrftoken');
+
 const categoryName = document.getElementById('categoryName');
 const questionElement = document.getElementById('question');
 const optionsElement = document.getElementById('options');
@@ -15,7 +17,7 @@ let totalQuestions = 0;
 let currentQuestionIndex = 0;
 let questions = [];
     
-    // Загрузка теста
+
 async function loadTest() {
     try {
         const response = await fetch(`/api/learning/get_test_questions?category_id=${category_id}`);
@@ -54,7 +56,6 @@ function showNextQuestion() {
     optionsElement.style = "grid-template-columns: 1fr 1 fr";
 
     currentTest.options.forEach((option, index) => {
-        console.log(option.translation);
         const optionElement = document.createElement('div');
         optionElement.className = 'option';
         optionElement.textContent = option.translation;
@@ -127,7 +128,6 @@ function finishTest() {
     const buttonContainer = document.createElement('div');
     buttonContainer.className = 'restart-button-container';
     
-    // Кнопка для повторного прохождения теста
     const restartButton = document.createElement('button');
     restartButton.className = 'restart-button';
     restartButton.textContent = 'Пройти тест снова';
