@@ -2,6 +2,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q
 from rest_framework.decorators import api_view 
 
 from datetime import datetime, timedelta
@@ -246,3 +247,24 @@ def get_test_questions(request):
                 'success': 'error',
                 'error': str(e)
             }, status=500)
+
+
+@api_view(['GET'])
+def search_words(request):
+    query = request.GET.get('q', '').strip()
+
+    if not query:
+         return JsonResponse({'results': []})
+
+    words = Word.objects.filter(Q(word__icontains=query) | Q(translation__icontains=query))
+    results = []
+    for word in words:
+        for category in word.category.all():
+            results.append({
+                'word': word.word,
+                'translation': word.translation,
+                'category_name': category.name,
+                'category_id': category.id
+            })
+
+    return JsonResponse({'results': results})
