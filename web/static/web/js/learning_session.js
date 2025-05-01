@@ -1,5 +1,4 @@
 const INACTIVITY_TIME = 30000;
-const MIN_SESSION_TIME = 5000;
 
 let sessionStartTime = null;
 let lastActivityTime = null;
@@ -9,27 +8,37 @@ let isSending = false;
 
 const activityEvents = ['mousemove', 'scroll', 'click', 'keydown', 'touchstart'];
 
+window.session_id = null;
+
 activityEvents.forEach(event => {
     window.addEventListener(event, handleActivity, { passive: true });
 });
 
 
-function handleActivity() {
+async function handleActivity() {
     const now = new Date();
     lastActivityTime = now;
 
     if (!isSessionActive) {
-        startNewSession();
+        await startNewSession();
     }
 
     clearTimeout(inactivityTimer);
     inactivityTimer = setTimeout(endSession, INACTIVITY_TIME);
 }
 
-function startNewSession() {
+async function startNewSession() {
     sessionStartTime = new Date();
     isSessionActive = true;
-    console.log('Session started: ', sessionStartTime);
+
+    const response = await sendToServer({
+        type: 'session_start',
+        session_start: sessionStartTime.toISOString(),
+        page_url: window.location.href,
+    });
+
+    const data = await response.json()
+    window.session_id = data['session_id'];
 }
 
 async function endSession() {
@@ -38,22 +47,13 @@ async function endSession() {
     const now = new Date();
     const sessionDuration = now - sessionStartTime;
 
-    console.log('Session ended: ', now);
-    console.log('Session duration: ', sessionDuration);
-
-    if (sessionDuration < MIN_SESSION_TIME) {
-        isSessionActive = false;
-        sessionStartTime = null;
-        return;
-    }
-
     isSending = true;
-    console.log(window.location.href);
+    
     sendToServer({
-        session_start: sessionStartTime.toISOString(),
+        type: 'session_end',
+        session_id: window.session_id,
         session_end: now.toISOString(),
         duration: Math.floor(sessionDuration / 1000),
-        page_url: window.location.href
     }).finally(() => {
         resetSession();
         isSending = false;
@@ -63,6 +63,7 @@ async function endSession() {
 function resetSession() {
     isSessionActive = false;
     sessionStartTime = null;
+    window.session_id = null;
     clearTimeout(inactivityTimer);
 }
 

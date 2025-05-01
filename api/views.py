@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import random
 from urllib.parse import urlparse, parse_qs
 
-from api.models import Category, Learning_Category, Learned_Word, Word, Word_Repetition, Learning_Session
+from api.models import Category, Learning_Category, Learned_Word, Word, Word_Repetition, Learning_Session, Answer_Attempt
 from api.serializers import CategorySerializer
 
 
@@ -160,9 +160,16 @@ def send_repeat_result(request):
 
         word_id = data.get('word_id')
         is_known = data.get('is_known')
-
+        session_id = data.get('session_id')
+        print(session_id)
         message = ''
         repetition, created = Word_Repetition.objects.get_or_create(user=user, word_id=word_id)
+        Answer_Attempt.objects.create(
+            user=user,
+            word_id=word_id,
+            session_id=session_id,
+            is_correct=is_known
+        )
 
         if is_known:
             learned = False
@@ -276,35 +283,43 @@ def track_session(request):
         data = request.data
         user = request.user
         
-        method = ''
-        page_url = data['page_url']
-        parsed_url = urlparse(page_url)
-        page = parsed_url.path.split('/')[-1]
-        query_params = parse_qs(parsed_url.query)
-        category_id = query_params.get('category_id', [None])[0]
-        category = None
+        if data['type'] == 'session_start':
+            method = ''
+            page_url = data['page_url']
+            parsed_url = urlparse(page_url)
+            page = parsed_url.path.split('/')[-1]
+            query_params = parse_qs(parsed_url.query)
+            category_id = query_params.get('category_id', [None])[0]
+            category = None
+            if category_id != None:
+                category = Category.objects.get(id=category_id)
 
-        if category_id != None:
-            category = Category.objects.get(id=category_id)
-
-        match page:
-            case 'new_words':
-                method = 'new_words'
-            case 'repeat':
-                method = 'repeat'
-            case 'test':
-                method = 'test'
-
-        Learning_Session.objects.create(
-            user=user,
-            start_time=data['session_start'],
-            end_time=data['session_end'],
-            duration=data['duration'],
-            method=method,
-            category=category
-        )
-
-        return JsonResponse({'status': 'success', 'message': 'session was recorded'}, status=200)
+            match page:
+                case 'new_words':
+                    method = 'new_words'
+                case 'repeat':
+                    method = 'repeat'
+                case 'test':
+                    method = 'test'
+            new_session = Learning_Session.objects.create(
+                user=user,
+                start_time=data['session_start'],
+                method=method,
+                category=category)
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'session was started', 
+                'session_id': new_session.id
+                }, status=200)
+        
+        elif data['type'] == 'session_end':
+            session_id = data['session_id']
+            updated = Learning_Session.objects.filter(id=session_id).update(
+                end_time=data['session_end'],
+                duration=data['duration']
+            )
+            print(f"Updated {updated} records")
+            return JsonResponse({'status': 'success', 'message': 'session was ended'}, status=200)
     
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

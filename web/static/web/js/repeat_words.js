@@ -44,7 +44,8 @@ async function sendRepeatResult(remembered) {
         credentials: 'include',
         body: JSON.stringify({
           word_id: currentWordId,
-          is_known: remembered
+          is_known: remembered, 
+          session_id: window.session_id
         })
     });
 }
