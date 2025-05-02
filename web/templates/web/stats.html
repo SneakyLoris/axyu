@@ -1,10 +1,110 @@
 {% extends 'web/base_template.html' %}
+{% load static %}
 
-{% block title %}Успеваемость | English Vocabulary Trainer{% endblock %}
+{% block title %}{{ category.name }} | English Vocabulary Trainer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/statistics.css' %}">
+<link rel="stylesheet" href="{% static 'web/css/category.css' %}">
+<link rel="stylesheet" href="{% static 'web/css/plot.css' %}">
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'web/js/cookie_utils.js' %}"></script>
+<script src="{% static 'web/js/category.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'web/js/plots.js' %}"></script>
+{% endblock %}
 
 {% block content %}
-<h1>Моя успеваемость</h1>
-<div class="placeholder">
-    Пока нет выполненных тестов и выученных категорий
+<h1>Мой прогресс в изучении английского</h1>
+
+<div class="stats">
+    <div class="stat-card">
+        <h2>{{ stats.total_words }}</h2>
+        <p>Изучено слов</p>
+    </div>
+    <div class="stat-card">
+        <h2>{{ stats.total_quizzes }}</h2>
+        <p>Повторено слов</p>
+    </div>
+    <div class="stat-card">
+        <h2>{{ stats.success_rate }}%</h2>
+        <p>НИЧЕГО ТУТ НЕ ОТСЛЕЖИВАЕТСЯ</p>
+    </div>
 </div>
+
+<h2>Избранные категории</h2>
+
+<div class="categories">
+    {% for category in categories %}
+    {% if forloop.counter0|divisibleby:4 %}
+    <div class="category-row">{% endif %}
+
+        <a href="{% url 'categories_wordlist' category.name %}" class="category-link">
+            <div class="category-card">
+                <h3>{{ category.name }}</h3>
+            </div>
+            {% if user.is_authenticated %}
+            <input type="checkbox"
+                   id="cat-{{ category.id }}"
+                   class="category-checkbox"
+                   data-id="{{ category.id }}"
+                   {% if category.id in user_selected_categories %}checked{% endif %}>
+            <label for="cat-{{ category.id }}" title="Добавить категорию на изучение"></label>
+            {% endif %}
+        </a>
+
+        {% if forloop.counter|divisibleby:4 or forloop.last %}
+    </div>
+    {% endif %}
+    {% empty %}
+    <div class="empty-categories">
+        <p>Пока нет ни одной категории</p>
+    </div>
+    {% endfor %}
+</div>
+
+<h2>Графики всякие</h2>
+
+
+<div class="plots-container" id="plots">
+    <script id="pie-data" type="application/json">{{ pie_data|safe }}</script>
+    <script id="session-time-data" type="application/json">{{ session_time_data|safe }}</script>
+    <script id="session-count-data" type="application/json">{{ session_count_data|safe }}</script>
+
+    <div class="plot">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <div class="plot">
+        <canvas id="piePlot"></canvas>
+    </div>
+
+    <div class="plot">
+        <canvas id="sessionTimePlot"></canvas>
+    </div>
+
+    <div class="plot">
+        <canvas id="sessionCountPlot"></canvas>
+    </div>
+</div>
+
+
+<h2>Последние 7 дней</h2>
+<table>
+    <tr>
+        <th>Дата</th>
+        <th>Новые слова</th>
+        <th>Тесты</th>
+    </tr>
+    {% for day in week_progress %}
+    <tr>
+        <td>{{ day.date }}</td>
+        <td>{{ day.words }}</td>
+        <td>{{ day.quizzes }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
 {% endblock %}

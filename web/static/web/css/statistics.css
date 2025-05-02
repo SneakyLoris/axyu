@@ -1,0 +1,43 @@
+
+.stats {
+display: flex;
+gap: 20px;
+margin-bottom: 30px;
+}
+
+.stat-card {
+border: 1px solid #ddd;
+padding: 15px;
+border-radius: 8px;
+flex: 1;
+text-align: center;
+}
+
+.category {
+margin: 10px 0;
+}
+
+.category-bar {
+    height: 20px;
+    background: #4CAF50;
+    color: white;
+    padding: 3px 0 3px 10px;
+    border-radius: 4px;
+}
+
+table {
+width: 100%;
+border-collapse: collapse;
+margin-top: 20px;
+}
+
+th, td {
+border: 1px solid #ddd;
+padding: 8px;
+text-align: left;
+}
+
+th {
+background-color: #f2f2f2;
+}
+
