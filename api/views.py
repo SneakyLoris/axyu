@@ -140,7 +140,7 @@ def get_word_repeat(request):
     except Exception as e: 
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-REPETITION_INTERVALS = {0: 1, 1: 2, 2: 3, 3: 4}
+REPETITION_INTERVALS = {0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
 
 @api_view(['POST'])
 def send_repeat_result(request):
@@ -160,10 +160,13 @@ def send_repeat_result(request):
             is_correct=data['is_known']
         )
 
-
         if data['is_known']:
-            if repetition.repetition_count == 4:
+            if repetition.repetition_count == 5:
                 repetition.delete()
+                Learned_Word.objects.create(
+                    user=user,
+                    word_id=word_id
+                )
                 message = 'Word learned!'
             else:
                 repetition.repetition_count += 1
@@ -179,8 +182,7 @@ def send_repeat_result(request):
             )
             repetition.save()
             message = 'Word difficulty increased'
-                
-
+                 
         return JsonResponse({'status': 'success', 'message': message}, status=200)
 
     except Exception as e:

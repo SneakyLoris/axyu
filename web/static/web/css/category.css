@@ -202,3 +202,41 @@
     pointer-events: none;
     color: #666;
 }
+
+/* ===== Прогресс-кружок для повторений ===== */
+.progress-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: conic-gradient(var(--primary-color) 0% var(--progress), #eee var(--progress) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.progress-count {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--text-color);
+    z-index: 1;
+}
+
+.progress-circle::before {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--lighter-bg-color);
+}
+
+.other-words-placeholder {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

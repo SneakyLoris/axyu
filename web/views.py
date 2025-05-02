@@ -4,13 +4,12 @@ import json
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Count, Sum, F
-from django.db.models.functions import TruncDate
+from django.db.models.functions import Coalesce
+from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Subquery
 from django.shortcuts import render, redirect
 
 from api.models import User, Category, Word, Learning_Category, \
-    Learned_Word, Word_Repetition, Answer_Attempt  # Session
+    Learned_Word, Word_Repetition, Answer_Attempt
 from web.forms import RegistrationForm, AuthForm, FeedbackForm
 
 
@@ -131,19 +130,48 @@ def categories_wordlist_view(request, category_name):
     try:
         category = Category.objects.get(name=category_name)
         user = request.user if request.user.is_authenticated else None
-        wordlist = Word.objects.filter(category=category).annotate(
-            status=Case(
-                When(
-                    Exists(Learned_Word.objects.filter(word=OuterRef('pk'), user=user)),
-                    then=Value('learned')
+        
+        # Базовый запрос для слов категории
+        words = Word.objects.filter(category=category)
+        
+        # Если пользователь аутентифицирован - добавляем аннотации
+        if user:
+            wordlist = words.annotate(
+                status=Case(
+                    When(
+                        Exists(Learned_Word.objects.filter(word=OuterRef('pk'), user=user)),
+                        then=Value('learned')
+                    ),
+                    When(
+                        Exists(Word_Repetition.objects.filter(word=OuterRef('pk'), user=user)),
+                        then=Value('in_progress')
+                    ),
+                    default=Value('new'),
+                    output_field=CharField()
                 ),
-                When(
-                    Exists(Word_Repetition.objects.filter(word=OuterRef('pk'), user=user)),
-                    then=Value('in_progress')
-                ),
-                default=Value('new'),
-                output_field=CharField())
-        ).distinct()
+                repetition_count=Coalesce(
+                    Subquery(
+                        Word_Repetition.objects.filter(
+                            word=OuterRef('pk'),
+                            user=user
+                        ).values('repetition_count')[:1]
+                    ),
+                    Value(0)
+                )
+            ).distinct()
+            
+            # Добавляем прогресс в контекст (5 повторений = 100%)
+            wordlist = list(wordlist)
+            for word in wordlist:
+                word.repetition_progress = min(100, word.repetition_count * 20)
+        else:
+            # Для неаутентифицированных пользователей
+            wordlist = words.annotate(
+                status=Value('new', output_field=CharField()),
+                repetition_count=Value(0),
+                repetition_progress=Value(0)
+            ).distinct()
+            
     except Category.DoesNotExist:
         # Либо выбрасывать 404, мол такой страницы нет
         category = None

@@ -36,6 +36,13 @@
             <span class="english-word">{{ word.word }} /{{ word.transcription }}/</span>
             <span class="separator">—</span>
             <span class="russian-word">{{ word.translation }}</span>
+            {% if word.status == 'in_progress' %}
+                <div class="progress-circle" data-progress="{{ word.repetition_progress }}">
+                    <span class="progress-count">{{ word.repetition_count }}</span>
+                </div>
+            {% else %}
+                <div class="other-words-placeholder"></div>
+            {% endif %}
         </div>
         {% empty %}
             {% if wordlist is None %}
