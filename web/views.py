@@ -5,12 +5,12 @@ import json
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Count, Sum, F, DurationField
+from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Count, Sum, F
 from django.db.models.functions import TruncDate
 from django.shortcuts import render, redirect
 
 from api.models import User, Category, Word, Learning_Category, \
-    Learned_Word, Word_Repetition, Answer_Attempt, Session
+    Learned_Word, Word_Repetition, Answer_Attempt  # Session
 from web.forms import RegistrationForm, AuthForm, FeedbackForm
 
 
@@ -49,7 +49,7 @@ def auth_view(request):
                 form.add_error(None, "Введены неверные данные")
             else:
                 login(request, user)
-                Session.objects.create(user=user)
+                # Session.objects.create(user=user)
                 return redirect("main")
 
     return render(request, "web/auth.html", {
@@ -60,12 +60,12 @@ def auth_view(request):
 def logout_view(request):
     user = request.user
 
-    try:
+    """try:
         session = Session.objects.order_by("-start_time").filter(user=user).first()
         session.end_time = datetime.now()
         session.save()
     except Session.DoesNotExist:
-        Session.objects.create(user=user, end_time=datetime.now())
+        Session.objects.create(user=user, end_time=datetime.now())"""
 
     logout(request)
     return redirect("main")
@@ -235,13 +235,13 @@ def stats_view(request):
     ### Данные для графика посещения
 
     #### Количество посещений в день
-    sessions_count = (Session.objects
-                .filter(user=user)
-                .annotate(date=TruncDate('start_time'))
-                .values('date')
-                .annotate(count=Count('id'))
-                .order_by('date')
-                )
+    """sessions_count = (Session.objects
+                      .filter(user=user)
+                      .annotate(date=TruncDate('start_time'))
+                      .values('date')
+                      .annotate(count=Count('id'))
+                      .order_by('date')
+                      )
 
     labels = [line["date"] for line in sessions_count]
     data = [line["count"] for line in sessions_count]
@@ -255,18 +255,18 @@ def stats_view(request):
     }
 
     #### Время проведенное в день
-    def covert_time_to_hour(time:timedelta):
+    def covert_time_to_hour(time: timedelta):
         return time.seconds / 3600
 
     sessions_time = (Session.objects
-                      .filter(user=user)
-                      .annotate(date=TruncDate('start_time'))
-                      .values('date')
-                      .annotate(sum=Sum(F('end_time') - F('start_time')))
-                      .order_by('date')
-                      )
+                     .filter(user=user)
+                     .annotate(date=TruncDate('start_time'))
+                     .values('date')
+                     .annotate(sum=Sum(F('end_time') - F('start_time')))
+                     .order_by('date')
+                     )
 
-    data  = [covert_time_to_hour(line["sum"]) for line in sessions_time]
+    data = [covert_time_to_hour(line["sum"]) for line in sessions_time]
     labels = [line["date"] for line in sessions_time]
 
     visit_time_dataset = {
@@ -276,8 +276,7 @@ def stats_view(request):
             "data": data,
         }]
     }
-
-
+"""
     """
     Список того, что можно визуализировать
     - Изучаемые категории [х]
@@ -291,8 +290,8 @@ def stats_view(request):
         'categories': categories,
         'week_progress': week_progress,
         'pie_data': json.dumps(pie_data),
-        'session_count_data': json.dumps(visit_count_dataset, cls=DjangoJSONEncoder),
-        'session_time_data': json.dumps(visit_time_dataset, cls=DjangoJSONEncoder),
+        #'session_count_data': json.dumps(visit_count_dataset, cls=DjangoJSONEncoder),
+        #'session_time_data': json.dumps(visit_time_dataset, cls=DjangoJSONEncoder),
     }
 
     return render(request, 'web/stats.html', context)
