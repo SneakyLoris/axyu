@@ -1,0 +1,14 @@
+.plots-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 10px;
+}
+
+.plot {
+    display: 0 0 auto;
+    min-width: 360px;
+    height: 240px;
+    border: 1px solid #ddd; /* Временно для наглядности */
+}
