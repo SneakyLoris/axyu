@@ -4,7 +4,9 @@ import json
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Count, Sum, F, DurationField
+from django.db.models.functions import TruncDate
 from django.shortcuts import render, redirect
 
 from api.models import User, Category, Word, Learning_Category, \
@@ -220,7 +222,7 @@ def stats_view(request):
     pie_data = {
         "labels": ["Learned", "In progress", "Not yet"],
         "datasets": [{
-            "lables": "some phrase",
+            "label": "some phrase",
             "data": set_data,
             "backgroundColor": [
                 'green',
@@ -231,37 +233,50 @@ def stats_view(request):
     }
 
     ### Данные для графика посещения
-    sessions = Session.objects.filter(user=user)
-    set_data = []
 
-    set_data = []
-    visit_time_dataset = {
-        "labels": [0, 3, 6, 9, 12],
-        "datasets": [{
-            "lables": "some phrase",
-            "data": set_data,
-            "backgroundColor": [
-                'green',
-                'yellow',
-                'red'
-            ],
-        }]
-    }
+    #### Количество посещений в день
+    sessions_count = (Session.objects
+                .filter(user=user)
+                .annotate(date=TruncDate('start_time'))
+                .values('date')
+                .annotate(count=Count('id'))
+                .order_by('date')
+                )
+
+    labels = [line["date"] for line in sessions_count]
+    data = [line["count"] for line in sessions_count]
 
     visit_count_dataset = {
-        "labels": [0, 3, 6, 9, 12],
+        "labels": labels,
         "datasets": [{
-            "lables": "some phrase",
-            "data": set_data,
-            "backgroundColor": [
-                'green',
-                'yellow',
-                'red'
-            ],
+            "label": "Количество входов на сайт",
+            "data": data,
         }]
     }
 
-    print(sessions)
+    #### Время проведенное в день
+    def covert_time_to_hour(time:timedelta):
+        return time.seconds / 3600
+
+    sessions_time = (Session.objects
+                      .filter(user=user)
+                      .annotate(date=TruncDate('start_time'))
+                      .values('date')
+                      .annotate(sum=Sum(F('end_time') - F('start_time')))
+                      .order_by('date')
+                      )
+
+    data  = [covert_time_to_hour(line["sum"]) for line in sessions_time]
+    labels = [line["date"] for line in sessions_time]
+
+    visit_time_dataset = {
+        "labels": labels,
+        "datasets": [{
+            "label": "Время проведенное на сайте",
+            "data": data,
+        }]
+    }
+
 
     """
     Список того, что можно визуализировать
@@ -276,6 +291,8 @@ def stats_view(request):
         'categories': categories,
         'week_progress': week_progress,
         'pie_data': json.dumps(pie_data),
+        'session_count_data': json.dumps(visit_count_dataset, cls=DjangoJSONEncoder),
+        'session_time_data': json.dumps(visit_time_dataset, cls=DjangoJSONEncoder),
     }
 
     return render(request, 'web/stats.html', context)

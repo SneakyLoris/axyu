@@ -18,13 +18,13 @@ new Chart(pie_ctx, {
 
 
 const session_time_ctx = document.getElementById('sessionTimePlot');
-new Chart(session_ctx, {
+new Chart(session_time_ctx, {
     type: 'line',
     data: JSON.parse(document.getElementById('session-time-data').textContent)
 });
 
 const session_count_ctx = document.getElementById('sessionCountPlot');
-new Chart(session_ctx, {
+new Chart(session_count_ctx, {
     type: 'bar',
     data: JSON.parse(document.getElementById('session-count-data').textContent)
 });
