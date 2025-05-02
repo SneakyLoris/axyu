@@ -1,40 +1,38 @@
-from django.http import HttpResponse, JsonResponse 
-from django.shortcuts import render
-from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
-from rest_framework.decorators import api_view 
-
-from datetime import datetime, timedelta
+from datetime import timedelta
 import random
 from urllib.parse import urlparse, parse_qs
 
-from api.models import Category, Learning_Category, Learned_Word, Word, Word_Repetition, Learning_Session, Answer_Attempt
+from django.http import JsonResponse 
+from django.utils import timezone
+from django.db.models import Q
+
+from rest_framework.decorators import api_view 
+
+from api.models import (
+    Category, Learning_Category, Learned_Word, Word, 
+    Word_Repetition, Learning_Session, Answer_Attempt
+)
 from api.serializers import CategorySerializer
 
 
 @api_view(['GET'])
 def categories(request):
-    categories = Category.objects.all();
-    serializer = CategorySerializer(categories, many=True)
-    return JsonResponse(serializer.data, safe=False)
-
+    return JsonResponse(
+        CategorySerializer(Category.objects.all(), many=True).data,
+        safe=False
+    )
 
 @api_view(['POST'])
 def update_user_categories(request):
     try:
         data = request.data
-
-        category_id = data.get('category_id')
-        is_checked = data.get('is_checked')
-
         user = request.user
-        category = Category.objects.get(id=category_id)
+        category = Category.objects.get(id=data['category_id'])
 
         if category.owner not in [None, user.id]:
             raise Category.DoesNotExist
         
-        if is_checked:
+        if data['is_checked']:
             Learning_Category.objects.get_or_create(user=user, category=category)
             message = f"Category '{category.name}' added"
         else:
@@ -54,24 +52,21 @@ def update_user_categories(request):
 def new_word_send_result(request):
     try:
         data = request.data
-
-        word_id = data.get('word_id')
-        is_known = data.get('is_known')
         user = request.user
 
-        message = ''
+        word_id = data.get('word_id')
 
-        if is_known:
+        if data['is_known']:
             Learned_Word.objects.create(user=user, word_id=word_id)
-            message = 'Known word added'
-        else:
-            Word_Repetition.objects.create(
-                user=user,
-                word_id=word_id,
-                next_review=timezone.now() + timedelta(seconds=30)
-            )
+            return JsonResponse({'status': 'success', 'message': 'Known word added'}, status=200)
+    
+        Word_Repetition.objects.create(
+            user=user,
+            word_id=word_id,
+            next_review=timezone.now() + timedelta(seconds=30)
+        )
 
-        return JsonResponse({'status': 'success', 'message': message}, status=200)
+        return JsonResponse({'status': 'success', 'message': 'Word to learned added'}, status=200)
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
@@ -80,31 +75,24 @@ def new_word_send_result(request):
 @api_view(['GET'])
 def get_new_word(request):
     try:
-        user_categories = Learning_Category.objects.filter(user_id=request.user.id)
-        user_categories_ids = user_categories.values_list('category_id', flat=True)
-
-        if not user_categories_ids:
+        user = request.user
+        user_categories = Learning_Category.objects.filter(user=user).values_list('category_id', flat=True)
+        
+        if not user_categories:
             return JsonResponse({'status': 'error', 'message': 'No categories that user learns'}, status=200)
 
-        learned_words = Learned_Word.objects.filter(user=request.user)
-        learned_words_ids = learned_words.values_list('word_id', flat=True)
-
-        repeat_words = Word_Repetition.objects.filter(user=request.user)
-        repeat_words_ids = repeat_words.values_list('word_id', flat=True)
-
-        excluded_word_ids = set(learned_words_ids) | set(repeat_words_ids)
-
-        new_words = Word.objects.filter(
-            category__in=user_categories_ids
-        ).exclude(
-            id__in=excluded_word_ids
+        excluded_words = set(
+            Learned_Word.objects.filter(user=user).values_list('word_id', flat=True)
+        ).union(
+            Word_Repetition.objects.filter(user=user).values_list('word_id', flat=True)
         )
+
+        new_words = Word.objects.filter(category__in=user_categories).exclude(id__in=excluded_words)
 
         if not new_words.exists():
             return JsonResponse({'status': 'error', 'message': 'No new words to learn'}, status=200)
 
         word_obj = random.choice(new_words)
-        
         return JsonResponse({
             'status': 'success',
             'id': word_obj.id,
@@ -112,6 +100,7 @@ def get_new_word(request):
             'translation': word_obj.translation,
             'transcription': word_obj.transcription
         })
+    
     except Exception as e: 
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
@@ -151,63 +140,45 @@ def get_word_repeat(request):
     except Exception as e: 
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
+REPETITION_INTERVALS = {0: 1, 1: 2, 2: 3, 3: 4}
 
 @api_view(['POST'])
 def send_repeat_result(request):
     try:
         data = request.data
         user = request.user
-
         word_id = data.get('word_id')
-        is_known = data.get('is_known')
-        session_id = data.get('session_id')
-        print(session_id)
-        message = ''
-        repetition, created = Word_Repetition.objects.get_or_create(user=user, word_id=word_id)
+
+        repetition, _ = Word_Repetition.objects.get_or_create(
+            user=user, 
+            word_id=word_id
+        )
         Answer_Attempt.objects.create(
             user=user,
             word_id=word_id,
-            session_id=session_id,
-            is_correct=is_known
+            session_id=data['session_id'],
+            is_correct=data['is_known']
         )
 
-        if is_known:
-            learned = False
 
-            if not created:
-                if repetition.repetition_count == 4:
-                    learned = True
-                elif repetition.repetition_count == 0:
-                    new_interval = 1 # 1 min
-                elif repetition.repetition_count == 1:
-                    new_interval = 2 # 2 min
-                elif repetition.repetition_count == 2:
-                    new_interval = 3 # 3 min
-                elif repetition.repetition_count == 3:
-                    new_interval = 4 # 4 min
-                    
-            if learned:
+        if data['is_known']:
+            if repetition.repetition_count == 4:
                 repetition.delete()
-                message = 'Word learned successfully'
+                message = 'Word learned!'
             else:
                 repetition.repetition_count += 1
                 repetition.next_review = timezone.now() + timedelta(
-                    minutes=new_interval
+                    minutes=REPETITION_INTERVALS.get(repetition.repetition_count, 0)
                 )
                 repetition.save()
-                message = 'Word repeated successfully'
+                message = 'Repetition updated'
         else:
-            if repetition.repetition_count > 2:
-                repetition.repetition_count = 2
-                new_interval = 3
-                repetition.next_review = timezone.now() + timedelta(minutes=new_interval)
-            else:
-                new_interval = repetition.repetition_count
-                repetition.next_review = timezone.now() + timedelta(
-                    minutes=new_interval
-                )
-                repetition.save()
-            message = 'Word was not repeated'
+            repetition.repetition_count = max(0, repetition.repetition_count - 1)
+            repetition.next_review = timezone.now() + timedelta(
+                minutes=REPETITION_INTERVALS.get(repetition.repetition_count, 0)
+            )
+            repetition.save()
+            message = 'Word difficulty increased'
                 
 
         return JsonResponse({'status': 'success', 'message': message}, status=200)
@@ -220,24 +191,24 @@ def send_repeat_result(request):
 def get_test_questions(request):
     try:
         category_id = request.GET.get('category_id')
-        all_words = list(Word.objects.filter(
+        words = list(Word.objects.filter(
             category__id=category_id
         ).values('id', 'word', 'transcription', 'translation'))
 
-        if not all_words:
+        if not words:
             return JsonResponse({'words': []})
         
         questions = []
 
-        for word in all_words:
-            other_words = [w for w in all_words if w['id'] != word['id']]
+        for word in words:
             wrong_translations = random.sample(
-                [w['translation'] for w in other_words],
-                min(3, len(other_words))
+                [w['translation'] for w in words if w['id'] != word['id']],
+                min(3, len(words) - 1)
             )
 
-            options = [{'translation': word['translation'], 'is_correct': True}]
-            options.extend({'translation': trans, 'is_correct': False} for trans in wrong_translations)
+            options = [{'translation': word['translation'], 'is_correct': True}] + [
+                {'translation': trans, 'is_correct': False} for trans in wrong_translations
+            ]
             random.shuffle(options)
 
             questions.append({
@@ -251,10 +222,7 @@ def get_test_questions(request):
         return JsonResponse({'questions': questions})
 
     except Exception as e:
-            return JsonResponse({
-                'success': 'error',
-                'error': str(e)
-            }, status=500)
+            return JsonResponse({'success': 'error','error': str(e)}, status=500)
 
 
 @api_view(['GET'])
@@ -277,6 +245,13 @@ def search_words(request):
 
     return JsonResponse({'results': results})
 
+
+LEARNING_METHODS = {
+    'new_words': 'new_words',
+    'repeat': 'repeat',
+    'test': 'test'
+}
+
 @api_view(['POST'])
 def track_session(request):
     try:
@@ -284,41 +259,28 @@ def track_session(request):
         user = request.user
         
         if data['type'] == 'session_start':
-            method = ''
-            page_url = data['page_url']
-            parsed_url = urlparse(page_url)
+            parsed_url = urlparse(data['page_url'])
             page = parsed_url.path.split('/')[-1]
-            query_params = parse_qs(parsed_url.query)
-            category_id = query_params.get('category_id', [None])[0]
-            category = None
-            if category_id != None:
-                category = Category.objects.get(id=category_id)
-
-            match page:
-                case 'new_words':
-                    method = 'new_words'
-                case 'repeat':
-                    method = 'repeat'
-                case 'test':
-                    method = 'test'
-            new_session = Learning_Session.objects.create(
+            category_id = parse_qs(parsed_url.query).get('category_id', [None])[0]
+            
+            session = Learning_Session.objects.create(
                 user=user,
                 start_time=data['session_start'],
-                method=method,
-                category=category)
+                method=LEARNING_METHODS.get(page, ''),
+                category_id=category_id
+            )
             return JsonResponse({
                 'status': 'success', 
                 'message': 'session was started', 
-                'session_id': new_session.id
+                'session_id': session.id
                 }, status=200)
         
         elif data['type'] == 'session_end':
-            session_id = data['session_id']
-            updated = Learning_Session.objects.filter(id=session_id).update(
+            Learning_Session.objects.filter(id=data['session_id']).update(
                 end_time=data['session_end'],
                 duration=data['duration']
             )
-            print(f"Updated {updated} records")
+
             return JsonResponse({'status': 'success', 'message': 'session was ended'}, status=200)
     
     except Exception as e:
