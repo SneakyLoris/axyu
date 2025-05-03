@@ -73,3 +73,12 @@ function highlightWord() {
         }, 1000);
     }
 }
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    const circles = document.querySelectorAll('.progress-circle');
+    circles.forEach(circle => {
+        const progress = circle.getAttribute('data-progress');
+        circle.style.setProperty('--progress', `${progress}%`);
+    });
+});
