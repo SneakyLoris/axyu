@@ -1,6 +1,5 @@
 {% extends 'web/base_template.html' %}
 {% load static %}
-
 {% block title %}{{ category.name }} | English Vocabulary Trainer{% endblock %}
 
 {% block extra_css %}
@@ -15,7 +14,7 @@
 
 {% block content %}
 <div class="category-header">
-    <h1 style="margin-top: 30px;">Категории словаря</h2>
+    <h1 style="margin-top: 30px;">Категории словаря</h1>
 </div>
 
 <div class="categories">
@@ -25,15 +24,17 @@
         <a href="{% url 'categories_wordlist' category.name %}" class="category-link">
             <div class="category-card">
                 <h3>{{ category.name }}</h3>
-                <a href="{% url 'remove_category' category.name%}">Удалить</a>
             </div>
             {% if user.is_authenticated %}
-            <input type="checkbox"
+            <div class="category-card-options">
+                <input type="checkbox"
                     id="cat-{{ category.id }}"
                     class="category-checkbox"
                     data-id="{{ category.id }}"
                     {% if category.id in user_selected_categories %}checked{% endif %}>
-            <label for="cat-{{ category.id }}" title="Добавить категорию на изучение"></label>
+                <label for="cat-{{ category.id }}" title="Добавить категорию на изучение"></label>
+                <a href="{% url 'remove_category' category.name%}">Удалить</a>
+            </div>
             {% endif %}
         </a>
 

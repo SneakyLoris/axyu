@@ -10,7 +10,7 @@
     display: flex;
     flex-wrap: wrap;
     width: 100%;
-    gap: 70px;
+    gap: 30px;
     margin-bottom: 20px;
 }
 
@@ -55,6 +55,13 @@
     transform: translateY(-5px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
+
+.category-card-options {
+    display: flex;
+    flex-direction: column;
+    gap: 35px;
+}
+
 
 /* ===== Чекбокс для избранного ===== */
 .category-checkbox {
