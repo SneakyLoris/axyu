@@ -31,7 +31,7 @@ class Command(BaseCommand):
                 if not filename.endswith('.txt'):
                     continue
 
-                category_name = os.path.splitext(filename)[0].lower()
+                category_name = os.path.splitext(filename)[0]
                 file_path = os.path.join(dir_path, filename)
 
                 category, _ = Category.objects.get_or_create(
