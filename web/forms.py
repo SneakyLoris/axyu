@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from api.models import Feedback
+from api.models import Feedback, Category
 
 User = get_user_model()
 
@@ -44,4 +44,50 @@ class FeedbackForm(forms.ModelForm):
                 'class': 'form-control',
                 'rows': 5,
             }),
+        }
+
+
+class AddCategoryForm(forms.ModelForm):
+    word_file = forms.FileField(
+        label='Файл со словами',
+        help_text='Загрузите .txt файл со словами в формате: слово;перевод;транскрипция'
+    )
+
+    class Meta:
+        model = Category
+        fields = ['name', 'description']
+        labels = {
+            'name': 'Название категории',
+            'description': 'Описание (необязательно)'
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+        error_messages = {
+            'name': {
+                'unique': "Категория с таким названием уже существует.",
+            }
+        }
+
+class EditCategoryForm(forms.ModelForm):
+    word_file = forms.FileField(
+        label='Новый файл со словами',
+        help_text='Загрузите новый .txt файл (старый будет удален)',
+        required=False
+    )
+
+    class Meta:
+        model = Category
+        fields = ['name', 'description']
+        labels = {
+            'name': 'Название категории',
+            'description': 'Описание'
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+        error_messages = {
+            'name': {
+                'unique': "Категория с таким названием уже существует.",
+            }
         }

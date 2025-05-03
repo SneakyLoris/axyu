@@ -20,6 +20,7 @@ urlpatterns = [
     path('categories/<str:category_name>', categories_wordlist_view, name='categories_wordlist'),
 
     path('category/add', add_category_view, name='add_category'),
-    path('category/remove', remove_category_view, name='remove_category'),
+    path('category/remove/<int:category_id>/', remove_category_view, name='remove_category'),
+    path('category/edit/<int:category_id>', edit_category_view, name='edit_category'),
     path('feedback/', feedback_view, name='feedback'),
 ]

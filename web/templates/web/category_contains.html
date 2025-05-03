@@ -13,7 +13,22 @@
 
 {% block content %}
 <div class="category-header">
-    <h1 style="margin-top: 30px;">{{ category.name }}</h1>
+    <div class="category-title-container">
+        <h1 style="margin-top: 30px;">{{ category.name }}</h1>
+        {% if category.owner == request.user %}
+            <a href="{% url 'edit_category' category.id %}"
+               class="edit-category-link"
+               style="margin-top: 30px;">
+               Редактировать категорию
+            </a>
+            <a href="{% url 'remove_category' category.id %}"
+               class="delete-category-link"
+               style="margin-top: 30px;"
+               onclick="return confirm('Вы уверены, что хотите удалить эту категорию? Все слова будут потеряны.');">
+               Удалить категорию
+            </a>
+        {% endif %}
+    </div>
 </div>
 
 <div class="section">

@@ -91,6 +91,7 @@ header {
     position: relative;
     display: inline-block;
     height: 100%;
+    z-index: 1100;
 }
 
 .dropdown-content {
@@ -102,7 +103,7 @@ header {
     min-width: 180px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     border-radius: 8px;
-    z-index: 1000;
+    z-index: 1100;
     padding: 10px 0;
     animation: fadeIn 0.2s ease-out;
 }

@@ -15,7 +15,7 @@
 
 {% block content %}
 <div class="category-header">
-    <h1 style="margin-top: 30px;">Категории словаря</h2>
+    <h1 style="margin-top: 30px;">Категории словаря</h1>
 </div>
 
 <div class="categories">
@@ -45,7 +45,9 @@
 </div>
 
 <div>
-    <a href="{% url 'add_category' %}" class="add-new">+ Добавить категорию</a>
+<a href="{% if user.is_authenticated %}{% url 'add_category' %}{% else %}{% url 'login' %}?next={% url 'add_category' %}{% endif %}" class="add-new">
+    + Добавить категорию
+</a>
 </div>
 
 {% endblock %}

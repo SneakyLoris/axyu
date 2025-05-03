@@ -1,0 +1,50 @@
+{% extends 'web/base_template.html' %}
+{% load static %}
+
+{% block title %}Редактировать категорию | English Vocabulary Trainer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/forms.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Редактировать категорию "{{ category.name }}"</h1>
+    <form method="post" enctype="multipart/form-data" class="category-form">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="form-field">
+            {{ form.name.label_tag }}
+            {{ form.name }}
+            {% if form.name.errors %}
+                <div class="field-errors">{{ form.name.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-field">
+            {{ form.description.label_tag }}
+            {{ form.description }}
+            {% if form.description.errors %}
+                <div class="field-errors">{{ form.description.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-field">
+            {{ form.word_file.label_tag }}
+            {{ form.word_file }}
+            {% if form.word_file.errors %}
+                <div class="field-errors">{{ form.word_file.errors }}</div>
+            {% endif %}
+            <p class="help-text">{{ form.word_file.help_text }}</p>
+        </div>
+
+        <button type="submit" class="submit-button">Сохранить изменения</button>
+    </form>
+</div>
+{% endblock %}
