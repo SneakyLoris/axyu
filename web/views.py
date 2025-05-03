@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 import random
 import json
@@ -184,13 +185,14 @@ def categories_wordlist_view(request, category_name):
 
 
 def add_category_view(request):
-    # БУДЕТ ФОРМА
-    return render(request, "web/stats.html")
+    # Времеенное решение для заполнения страницы категориями
+    os.system("python manage.py load_words wordlists/translated")
+    return redirect("categories")
 
 
-def remove_category_view(request):
-    # БУДЕТ УДАЛЕНИЕ КАТЕГОРИИ
-    return redirect("web/main.html")
+def remove_category_view(request, category_name):
+    Category.objects.get(name=category_name).delete()
+    return redirect("categories")
 
 
 def feedback_view(request):
