@@ -1,11 +1,20 @@
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
+    const userAvatar = document.getElementById('userAvatar');
+
+    if (userAvatar) {
+        userAvatar.addEventListener('click', function() {
+            if (searchResults) {
+                searchResults.style.display = 'none';
+            }
+        });
+    }
 
     searchInput.addEventListener('input', async function(e) {
-        const query = e.target.value.trim();
+        const query = e.target.value.trim().toLowerCase();
 
-    if (query.length === 0) {
+    if (query.length < 2) {
         searchResults.innerHTML = '';
         searchResults.style.display = 'none';
         return;
@@ -18,11 +27,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.results && data.results.length > 0) {
                 searchResults.innerHTML = '';
                 data.results.forEach(item => {
+                    const isExactMatch = item.word.toLowerCase() === query || item.translation.toLowerCase() === query;
                     const resultItem = document.createElement('div');
                     resultItem.className = 'search-result-item';
                     resultItem.innerHTML = `
-                        <a href="/categories/${encodeURIComponent(item.category_name)}">
-                            ${item.word} - ${item.category_name}
+                        <a href="/categories/${encodeURIComponent(item.category_name)}?highlight=${encodeURIComponent(item.word)}&exact=true"
+                           data-exact="${isExactMatch}"
+                           data-word="${item.word.toLowerCase()}">
+                           ${item.word} /${item.transcription}/ ${item.translation} - ${item.category_name}
                         </a>
                     `;
                     searchResults.appendChild(resultItem);

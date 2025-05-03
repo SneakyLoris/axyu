@@ -29,7 +29,7 @@ def update_user_categories(request):
         user = request.user
         category = Category.objects.get(id=data['category_id'])
 
-        if category.owner not in [None, user.id]:
+        if category.owner not in [None, user]:
             raise Category.DoesNotExist
         
         if data['is_checked']:
@@ -228,22 +228,42 @@ def get_test_questions(request):
 
 @api_view(['GET'])
 def search_words(request):
-    query = request.GET.get('q', '').strip()
+    query = request.GET.get('q', '').strip().lower()
 
-    if not query:
-         return JsonResponse({'results': []})
+    if not query or len(query) < 2:
+        return JsonResponse({'results': []})
 
-    words = Word.objects.filter(Q(word__icontains=query) | Q(translation__icontains=query))
+    words = Word.objects.filter(
+        Q(word__icontains=query) | Q(translation__icontains=query)
+    ).distinct()
+
     results = []
+    exact_matches = []
+    partial_matches = []
+
     for word in words:
-        for category in word.category.all():
-            results.append({
+        accessible_categories = word.category.filter(
+            Q(owner__isnull=True) |  # Общие категории
+            Q(owner=request.user.id if request.user.is_authenticated else None)  # Категории пользователя
+        )
+
+        for category in accessible_categories:
+            item = {
                 'word': word.word,
                 'translation': word.translation,
+                'transcription': word.transcription,
                 'category_name': category.name,
-                'category_id': category.id
-            })
+                'category_id': category.id,
+                'is_private': category.owner is not None
+            }
 
+            if word.word.lower() == query or word.translation.lower() == query:
+                exact_matches.append(item)
+            else:
+                partial_matches.append(item)
+
+    # Сначала точные совпадения, потом частичные
+    results = exact_matches + partial_matches
     return JsonResponse({'results': results})
 
 

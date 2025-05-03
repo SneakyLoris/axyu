@@ -47,7 +47,9 @@
 </div>
 
 <div>
-    <a href="{% url 'add_category' %}" class="add-new">+ Добавить категорию</a>
+<a href="{% if user.is_authenticated %}{% url 'add_category' %}{% else %}{% url 'login' %}?next={% url 'add_category' %}{% endif %}" class="add-new">
+    + Добавить категорию
+</a>
 </div>
 
 {% endblock %}

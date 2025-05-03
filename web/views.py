@@ -8,10 +8,21 @@ from django.contrib import messages
 from django.db.models.functions import Coalesce
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Subquery
 from django.shortcuts import render, redirect
+from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.core.management import call_command
+from django.conf import settings
+
+
+import os
 
 from api.models import User, Category, Word, Learning_Category, \
     Learned_Word, Word_Repetition, Answer_Attempt
-from web.forms import RegistrationForm, AuthForm, FeedbackForm
+from foreign_words.settings import BASE_DIR
+from web.forms import RegistrationForm, AuthForm, FeedbackForm, AddCategoryForm, EditCategoryForm
 
 
 def main_view(request):
@@ -131,10 +142,10 @@ def categories_wordlist_view(request, category_name):
     try:
         category = Category.objects.get(name=category_name)
         user = request.user if request.user.is_authenticated else None
-        
+
         # Базовый запрос для слов категории
         words = Word.objects.filter(category=category)
-        
+
         # Если пользователь аутентифицирован - добавляем аннотации
         if user:
             wordlist = words.annotate(
@@ -160,7 +171,7 @@ def categories_wordlist_view(request, category_name):
                     Value(0)
                 )
             ).distinct()
-            
+
             # Добавляем прогресс в контекст (5 повторений = 100%)
             wordlist = list(wordlist)
             for word in wordlist:
@@ -172,7 +183,7 @@ def categories_wordlist_view(request, category_name):
                 repetition_count=Value(0),
                 repetition_progress=Value(0)
             ).distinct()
-            
+
     except Category.DoesNotExist:
         # Либо выбрасывать 404, мол такой страницы нет
         category = None
@@ -181,18 +192,23 @@ def categories_wordlist_view(request, category_name):
     return render(request, "web/category_contains.html", {
         "wordlist": wordlist,
         "category": category,
+        "highlight_word": request.GET.get('highlight', ''),
     })
 
 
-def add_category_view(request):
-    # Времеенное решение для заполнения страницы категориями
-    os.system("python manage.py load_words wordlists/translated")
-    return redirect("categories")
+@login_required
+def remove_category_view(request, category_id):
+    category = get_object_or_404(Category, id=category_id, owner=request.user)
 
+    user_upload_dir = os.path.join(settings.BASE_DIR, 'wordlists', 'translated', 'user_uploads', str(request.user.id))
+    file_path = os.path.join(user_upload_dir, f"{category.name}.txt")
 
-def remove_category_view(request, category_name):
-    Category.objects.get(name=category_name).delete()
-    return redirect("categories")
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    category.delete()
+
+    return redirect('categories')
 
 
 def feedback_view(request):
@@ -206,6 +222,100 @@ def feedback_view(request):
         form = FeedbackForm()
 
     return render(request, 'web/feedback.html', {'form': form})
+
+
+@login_required
+def add_category_view(request):
+    if request.method == 'POST':
+        form = AddCategoryForm(request.POST, request.FILES)
+        if form.is_valid():
+            category = form.save(commit=False)
+            category.owner = request.user
+            category.save()
+
+            word_file = request.FILES['word_file']
+            user_upload_dir = os.path.join(BASE_DIR, 'wordlists', 'translated', 'user_uploads', str(request.user.id))
+            os.makedirs(user_upload_dir, exist_ok=True)
+
+            file_name = f"{category.name}.txt"
+            file_path = os.path.join(user_upload_dir, file_name)
+
+            with default_storage.open(file_path, 'wb+') as destination:
+                for chunk in word_file.chunks():
+                    destination.write(chunk)
+
+            try:
+                call_command(
+                    'load_words',
+                    os.path.abspath(user_upload_dir),
+                    verbosity=0
+                )
+            except Exception as e:
+                print(f"Error loading words: {e}")
+                return render(request, 'web/add_category.html', {
+                    'form': form,
+                    'error': 'Ошибка при загрузке слов. Проверьте формат файла.'
+                })
+
+            return redirect('categories')
+    else:
+        form = AddCategoryForm()
+
+    return render(request, 'web/add_category.html', {'form': form})
+
+
+@login_required
+def edit_category_view(request, category_id):
+    category = get_object_or_404(Category, id=category_id, owner=request.user)
+    old_name = category.name
+    file_changed = False
+
+    if request.method == 'POST':
+        form = EditCategoryForm(request.POST, request.FILES, instance=category)
+        if form.is_valid():
+            new_category = form.save()
+            user_upload_dir = os.path.join(BASE_DIR, 'wordlists', 'translated', 'user_uploads', str(request.user.id))
+            old_file_path = os.path.join(user_upload_dir, f"{old_name}.txt")
+            new_file_path = os.path.join(user_upload_dir, f"{new_category.name}.txt")
+
+            # Обработка нового файла
+            if 'word_file' in request.FILES:
+                file_changed = True
+                new_file = request.FILES['word_file']
+
+                if os.path.exists(old_file_path):
+                    os.remove(old_file_path)
+
+                # Сохраняем новый файл
+                with default_storage.open(new_file_path, 'wb+') as destination:
+                    for chunk in new_file.chunks():
+                        destination.write(chunk)
+
+            # Переименование файла, если изменилось название категории (без замены файла)
+            elif old_name != new_category.name and os.path.exists(old_file_path):
+                os.rename(old_file_path, new_file_path)
+
+            if file_changed:
+                try:
+                    Word.objects.filter(category=category).delete()
+                    call_command(
+                        'load_words',
+                        os.path.abspath(user_upload_dir),
+                        verbosity=0
+                    )
+                except Exception as e:
+                    print(f"Error loading words: {e}")
+                    messages.error(request, 'Ошибка при загрузке слов. Проверьте формат файла.')
+                    return redirect('edit_category', category_id=category.id)
+
+            return redirect('categories_wordlist', category_name=new_category.name)
+    else:
+        form = EditCategoryForm(instance=category)
+
+    return render(request, 'web/edit_category.html', {
+        'form': form,
+        'category': category
+    })
 
 
 def stats_view(request):
