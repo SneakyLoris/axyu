@@ -25,6 +25,7 @@
         <a href="{% url 'categories_wordlist' category.name %}" class="category-link">
             <div class="category-card">
                 <h3>{{ category.name }}</h3>
+                <a href="{% url 'remove_category' category.name%}">Удалить</a>
             </div>
             {% if user.is_authenticated %}
             <input type="checkbox"

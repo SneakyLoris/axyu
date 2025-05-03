@@ -188,9 +188,9 @@ def add_category_view(request):
     return render(request, "web/stats.html")
 
 
-def remove_category_view(request):
-    # БУДЕТ УДАЛЕНИЕ КАТЕГОРИИ
-    return redirect("web/main.html")
+def remove_category_view(request, category_name):
+    Category.objects.get(name=category_name).delete()
+    return redirect("categories")
 
 
 def feedback_view(request):

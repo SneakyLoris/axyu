@@ -8,8 +8,8 @@ urlpatterns = [
     path('registration', registration_view, name='registration'),
     path('login', auth_view, name='login'),
     path('logout', logout_view, name='logout'),
-    ##########################################
     path('stats', stats_view, name='stats'),
+    ##########################################
     path('learning', learning_view, name='learning'),
     path('learning/new_words', learning_new_words_view, name='learning_new_words'),
     path('learning/repeat', learning_repeat_view, name='learning_repeat'),
@@ -18,8 +18,8 @@ urlpatterns = [
     ##########################################
     path('categories', categories_view, name='categories'),
     path('categories/<str:category_name>', categories_wordlist_view, name='categories_wordlist'),
-
     path('category/add', add_category_view, name='add_category'),
-    path('category/remove', remove_category_view, name='remove_category'),
+    path('category/<str:category_name>/remove', remove_category_view, name='remove_category'),
+    ##########################################
     path('feedback/', feedback_view, name='feedback'),
 ]
