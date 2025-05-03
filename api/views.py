@@ -57,7 +57,7 @@ def new_word_send_result(request):
         word_id = data.get('word_id')
 
         if data['is_known']:
-            Learned_Word.objects.create(user=user, word_id=word_id)
+            Learned_Word.objects.get_or_create(user=user, word_id=word_id)
             return JsonResponse({'status': 'success', 'message': 'Known word added'}, status=200)
     
         Word_Repetition.objects.create(
@@ -187,7 +187,6 @@ def send_repeat_result(request):
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-     
 
 @api_view(['GET'])
 def get_test_questions(request):
