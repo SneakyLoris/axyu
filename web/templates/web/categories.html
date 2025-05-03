@@ -26,15 +26,12 @@
                 <h3>{{ category.name }}</h3>
             </div>
             {% if user.is_authenticated %}
-            <div class="category-card-options">
                 <input type="checkbox"
                     id="cat-{{ category.id }}"
                     class="category-checkbox"
                     data-id="{{ category.id }}"
                     {% if category.id in user_selected_categories %}checked{% endif %}>
                 <label for="cat-{{ category.id }}" title="Добавить категорию на изучение"></label>
-                <a href="{% url 'remove_category' category.id%}">Удалить</a>
-            </div>
             {% endif %}
         </a>
 
