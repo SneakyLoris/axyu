@@ -4,6 +4,7 @@
 {% block title %}{{ category.name }} | English Vocabulary Trainer{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="{% static 'web/css/category.css' %}">
 {% endblock %}
 
@@ -13,22 +14,31 @@
 
 {% block content %}
 <div class="category-header">
-    <div class="category-title-container">
-        <h1 style="margin-top: 30px;">{{ category.name }}</h1>
-        {% if category.owner == request.user %}
-            <a href="{% url 'edit_category' category.id %}"
-               class="edit-category-link"
-               style="margin-top: 30px;">
-               Редактировать категорию
-            </a>
-            <a href="{% url 'remove_category' category.id %}"
-               class="delete-category-link"
-               style="margin-top: 30px;"
-               onclick="return confirm('Вы уверены, что хотите удалить эту категорию? Все слова будут потеряны.');">
-               Удалить категорию
-            </a>
-        {% endif %}
+    <div class="category-title-wrapper">
+        <h1 class="category-title">{{ category.name }}</h1>
     </div>
+    
+    {% if category.owner == request.user %}
+    <div class="category-actions">
+        <div class="action-buttons">
+            <a id="btnPlus" href="#" class="action-btn" title="Добавить слово">
+                <i class="fas fa-plus"></i>
+            </a>
+            <a href="{% url 'edit_category' category.id %}" class="action-btn" title="Редактировать категорию">
+                <i class="fas fa-edit"></i>
+            </a>
+            <a id="btnReset" href="{% url 'reset_category' category.id %}" class="action-btn" title="Сбросить прогресс">
+                <i class="fas fa-undo "></i>
+            </a>
+            <a href="{% url 'remove_category' category.id %}" 
+               class="action-btn" 
+               title="Удалить категорию"
+               onclick="return confirm('Вы уверены, что хотите удалить эту категорию? Все слова будут потеряны.');">
+                <i class="fas fa-trash"></i>
+            </a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <div class="section">

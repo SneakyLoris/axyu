@@ -43,10 +43,13 @@
     {% endfor %}
 </div>
 
-<div>
-<a href="{% if user.is_authenticated %}{% url 'add_category' %}{% else %}{% url 'login' %}?next={% url 'add_category' %}{% endif %}" class="add-new">
-    + Добавить категорию
-</a>
-</div>
+{% if user.is_authenticated %}
+    <div class="section">
+        <h2>Добавление категории</h2>
+        <a class="test-link" href="{% if user.is_authenticated %}{% url 'add_category' %}{% else %}{% url 'login' %}?next={% url 'add_category' %}{% endif %}" class="add-new">
+            + Добавить категорию
+        </a>
+    </div>
+{% endif %}
 
 {% endblock %}

@@ -315,3 +315,73 @@
     text-decoration: none;
 }
 
+
+
+/* ===================================== */
+
+/* Основные стили */
+.category-header {
+    display: flex;
+    position: relative;
+    margin: 30px 0;
+    padding: 0;
+    min-height: 60px;
+    align-items: center;
+}
+
+.category-title-wrapper {
+    position: absolute;
+    left: 0;
+    right: 0;
+    text-align: center;
+    pointer-events: none;
+}
+
+
+.category-actions {
+    margin-left: auto;
+    z-index: 1;
+}
+
+.action-buttons {
+    padding: 5px;
+
+}
+
+/* Стили кнопок (приглушённые) */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    color: #555;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: 1px solid #ddd;
+}
+
+.action-btn:hover {
+    background: #e0e0e0;
+    color: #333;
+    transform: none;
+}
+
+.action-btn.danger {
+    color: #d32f2f;
+    background: #fce8e8;
+}
+
+.action-btn.danger:hover {
+    background: #f5d0d0;
+}
+
+/* Иконки */
+.action-btn i {
+    font-size: 14px;
+}
+
+/* Подключение Font Awesome */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
