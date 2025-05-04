@@ -19,10 +19,12 @@ from django.conf import settings
 
 import os
 
+from psycopg2 import IntegrityError
+
 from api.models import User, Category, Word, Learning_Category, \
     Learned_Word, Word_Repetition, Answer_Attempt
 from foreign_words.settings import BASE_DIR
-from web.forms import RegistrationForm, AuthForm, FeedbackForm, AddCategoryForm, EditCategoryForm
+from web.forms import RegistrationForm, AuthForm, FeedbackForm, AddCategoryForm, EditCategoryForm, AddWordForm
 
 
 def main_view(request):
@@ -455,3 +457,42 @@ def reset_category_progress_view(request, category_id):
 
     messages.success(request, f'Прогресс по категории "{category.name}" сброшен')
     return redirect('categories_wordlist', category_name=category.name)
+
+
+@login_required
+def add_word_to_category_view(request, category_id):
+    category = get_object_or_404(Category, id=category_id, owner=request.user)
+
+    if request.method == 'POST':
+        form = AddWordForm(request.POST)
+        if form.is_valid():
+            word_text = form.cleaned_data['word'].strip().lower()
+            existing_word = Word.objects.filter(word__iexact=word_text).first()
+
+            try:
+                if existing_word:
+                    if existing_word.category.filter(id=category.id).exists():
+                        form.add_error('word', 'Это слово уже есть в данной категории')
+                    else:
+                        # Связываем существующее слово с категорией
+                        existing_word.category.add(category)
+                        messages.success(request, 'Слово добавлено в категорию')
+                        return redirect('categories_wordlist', category_name=category.name)
+                else:
+                    word = form.save(commit=False)
+                    word.word = word.word.lower()
+                    word.save()
+                    word.category.add(category)
+                    messages.success(request, 'Слово успешно добавлено')
+                    return redirect('categories_wordlist', category_name=category.name)
+
+            except IntegrityError:
+                form.add_error(None, 'Ошибка при добавлении слова')
+
+    else:
+        form = AddWordForm()
+
+    return render(request, 'web/add_word.html', {
+        'form': form,
+        'category': category
+    })

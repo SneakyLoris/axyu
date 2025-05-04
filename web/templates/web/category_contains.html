@@ -21,7 +21,9 @@
     <div class="category-actions">
         <div class="action-buttons">
             {% if category.owner == request.user %}
-            <a id="btnPlus" href="#" class="action-btn" title="Добавить слово">
+            <a href="{% url 'add_word_to_category' category.id %}"
+               class="action-btn"
+               title="Добавить слово">
                 <i class="fas fa-plus"></i>
             </a>
             <a href="{% url 'edit_category' category.id %}" class="action-btn" title="Редактировать категорию">

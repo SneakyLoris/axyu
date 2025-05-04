@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from api.models import Feedback, Category
+from api.models import Feedback, Category, Word
 
 User = get_user_model()
 
@@ -90,4 +90,19 @@ class EditCategoryForm(forms.ModelForm):
             'name': {
                 'unique': "Категория с таким названием уже существует.",
             }
+        }
+
+class AddWordForm(forms.ModelForm):
+    class Meta:
+        model = Word
+        fields = ['word', 'translation', 'transcription']
+        labels = {
+            'word': 'Английское слово',
+            'translation': 'Перевод',
+            'transcription': 'Транскрипция'
+        }
+        widgets = {
+            'word': forms.TextInput(attrs={'class': 'form-control'}),
+            'translation': forms.TextInput(attrs={'class': 'form-control'}),
+            'transcription': forms.TextInput(attrs={'class': 'form-control'}),
         }
