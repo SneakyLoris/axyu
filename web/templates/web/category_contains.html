@@ -10,6 +10,7 @@
 
 {% block scripts %}
 <script src="{% static 'web/js/words_filter.js' %}"></script>
+<script src="{% static 'web/js/word_actions.js' %}"></script>
 {% endblock %}
 
 {% block content %}
@@ -66,7 +67,7 @@
     <h2>Список слов</h2>
     <div class="words-list" id="wordsList">
         {% for word in wordlist %}
-        <div class="word-row status-{{ word.status }}">
+        <div class="word-row status-{{ word.status }}" data-word-id="{{ word.id }}">
             <span class="english-word">{{ word.word }} /{{ word.transcription }}/</span>
             <span class="separator">—</span>
             <span class="russian-word">{{ word.translation }}</span>
@@ -96,5 +97,26 @@
     <h2>Тест по категории</h2>
     <a href="{% url 'category_test' %}?category_id={{ category.id }}" class="test-link">Перейти к тесту по категории</a>
 </div>
+
+{% if user.is_authenticated %}
+<div id="wordContextMenu" class="context-menu">
+    <a href="#" class="context-menu-item" data-action="start-learning">
+        <span class="fas fa-plus"></span> Начать учить
+    </a>
+    <a href="#" class="context-menu-item" data-action="mark-known">
+        <span class="fas fa-check"></span> Отметить как известное
+    </a>
+    <a href="#" class="context-menu-item" data-action="edit">
+        <span class="fas fa-edit"></span> Редактировать
+    </a>
+    <a href="#" class="context-menu-item" data-action="change-status">
+        <span class="fas fa-exchange-alt"></span> Изменить статус
+    </a>
+    <div class="context-menu-divider"></div>
+    <a href="#" class="context-menu-item context-menu-item--danger" data-action="delete">
+        <span class="fas fa-trash"></span> Удалить
+    </a>
+</div>
+{% endif %}
 
 {% endblock %}
