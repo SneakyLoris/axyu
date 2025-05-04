@@ -92,17 +92,19 @@ class EditCategoryForm(forms.ModelForm):
             }
         }
 
-class AddWordForm(forms.ModelForm):
-    class Meta:
-        model = Word
-        fields = ['word', 'translation', 'transcription']
-        labels = {
-            'word': 'Английское слово',
-            'translation': 'Перевод',
-            'transcription': 'Транскрипция'
-        }
-        widgets = {
-            'word': forms.TextInput(attrs={'class': 'form-control'}),
-            'translation': forms.TextInput(attrs={'class': 'form-control'}),
-            'transcription': forms.TextInput(attrs={'class': 'form-control'}),
-        }
+class AddWordForm(forms.Form):
+    word = forms.CharField(
+        label='Английское слово',
+        max_length=50,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    translation = forms.CharField(
+        label='Перевод',
+        max_length=50,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    transcription = forms.CharField(
+        label='Транскрипция',
+        max_length=50,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )

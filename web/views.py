@@ -467,27 +467,33 @@ def add_word_to_category_view(request, category_id):
         form = AddWordForm(request.POST)
         if form.is_valid():
             word_text = form.cleaned_data['word'].strip().lower()
-            existing_word = Word.objects.filter(word__iexact=word_text).first()
+            translation = form.cleaned_data['translation'].strip().lower()
+            transcription = form.cleaned_data['transcription'].strip()
 
-            try:
-                if existing_word:
-                    if existing_word.category.filter(id=category.id).exists():
-                        form.add_error('word', 'Это слово уже есть в данной категории')
-                    else:
-                        # Связываем существующее слово с категорией
+            if Word.objects.filter(word__iexact=word_text, category=category).exists():
+                form.add_error('word', 'Это слово уже есть в данной категории')
+            else:
+                try:
+                    existing_word = Word.objects.filter(word__iexact=word_text).first()
+
+                    if existing_word:
                         existing_word.category.add(category)
                         messages.success(request, 'Слово добавлено в категорию')
-                        return redirect('categories_wordlist', category_name=category.name)
-                else:
-                    word = form.save(commit=False)
-                    word.word = word.word.lower()
-                    word.save()
-                    word.category.add(category)
-                    messages.success(request, 'Слово успешно добавлено')
+                    else:
+                        new_word = Word.objects.create(
+                            word=word_text,
+                            translation=translation,
+                            transcription=transcription
+                        )
+                        new_word.category.add(category)
+                        messages.success(request, 'Слово успешно создано и добавлено')
+
                     return redirect('categories_wordlist', category_name=category.name)
 
-            except IntegrityError:
-                form.add_error(None, 'Ошибка при добавлении слова')
+                except IntegrityError:
+                    form.add_error('word', 'Ошибка: такое слово уже существует')
+                except Exception as e:
+                    form.add_error(None, f'Ошибка: {str(e)}')
 
     else:
         form = AddWordForm()
