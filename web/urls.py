@@ -6,7 +6,7 @@ from web.views import *
 urlpatterns = [
     path('', main_view, name='main'),
     path('registration', registration_view, name='registration'),
-    path('login', auth_view, name='login'),
+    path('login/', auth_view, name='login'),
     path('logout', logout_view, name='logout'),
     path('stats', stats_view, name='stats'),
     ##########################################
@@ -23,5 +23,4 @@ urlpatterns = [
     path('category/edit/<int:category_id>', edit_category_view, name='edit_category'),
     path('feedback/', feedback_view, name='feedback'),
     path('category/reset_progress/<int:category_id>/', reset_category_progress_view, name='reset_category_progress'),
-
 ]
