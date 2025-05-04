@@ -435,3 +435,23 @@ def stats_view(request):
     }
 
     return render(request, 'web/stats.html', context)
+
+
+@login_required
+def reset_category_progress_view(request, category_id):
+    category = get_object_or_404(Category, id=category_id)
+
+    words_in_category = Word.objects.filter(category=category)
+
+    Learned_Word.objects.filter(
+        user=request.user,
+        word__in=words_in_category
+    ).delete()
+
+    Word_Repetition.objects.filter(
+        user=request.user,
+        word__in=words_in_category
+    ).delete()
+
+    messages.success(request, f'Прогресс по категории "{category.name}" сброшен')
+    return redirect('categories_wordlist', category_name=category.name)

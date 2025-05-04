@@ -17,28 +17,35 @@
     <div class="category-title-wrapper">
         <h1 class="category-title">{{ category.name }}</h1>
     </div>
-    
-    {% if category.owner == request.user %}
+
     <div class="category-actions">
         <div class="action-buttons">
+            {% if category.owner == request.user %}
             <a id="btnPlus" href="#" class="action-btn" title="Добавить слово">
                 <i class="fas fa-plus"></i>
             </a>
             <a href="{% url 'edit_category' category.id %}" class="action-btn" title="Редактировать категорию">
                 <i class="fas fa-edit"></i>
             </a>
-            <a id="btnReset" href="#" class="action-btn" title="Сбросить прогресс">
-                <i class="fas fa-undo "></i>
+            {% endif %}
+
+            <a href="{% url 'reset_category_progress' category.id %}"
+               class="action-btn"
+               title="Сбросить прогресс"
+               onclick="return confirm('Вы уверены, что хотите сбросить прогресс по этой категории? Все ваши результаты будут удалены.');">
+                <i class="fas fa-undo"></i>
             </a>
-            <a href="{% url 'remove_category' category.id %}" 
-               class="action-btn" 
+
+            {% if category.owner == request.user %}
+            <a href="{% url 'remove_category' category.id %}"
+               class="action-btn danger"
                title="Удалить категорию"
                onclick="return confirm('Вы уверены, что хотите удалить эту категорию? Все слова будут потеряны.');">
                 <i class="fas fa-trash"></i>
             </a>
+            {% endif %}
         </div>
     </div>
-    {% endif %}
 </div>
 
 <div class="section">
