@@ -31,7 +31,6 @@
             <a href="{% url 'edit_category' category.id %}" class="action-btn" title="Редактировать категорию">
                 <i class="fas fa-edit"></i>
             </a>
-            {% endif %}
 
             <a href="{% url 'reset_category_progress' category.id %}"
                class="action-btn"
@@ -40,7 +39,6 @@
                 <i class="fas fa-undo"></i>
             </a>
 
-            {% if category.owner == request.user %}
             <a href="{% url 'remove_category' category.id %}"
                class="action-btn danger"
                title="Удалить категорию"
@@ -53,6 +51,7 @@
 </div>
 
 <div class="section">
+    {% if user.is_authenticated %}
     <div class="filter-controls">
         <div class="filter-dropdown">
             <select id="wordFilter" class="filter-select">
@@ -64,11 +63,12 @@
             <div class="dropdown-arrow">▼</div>
         </div>
     </div>
+    {% endif %}
 
     <h2>Список слов</h2>
     <div class="words-list" id="wordsList">
         {% for word in wordlist %}
-        <div class="word-row status-{{ word.status }}" 
+        <div class="word-row status-{% if user.is_authenticated %}{{ word.status }}{% endif %}" 
             data-word-id="{{ word.id }}"
             data-status="{{ word.status }}"
             data-is-owner="{% if category.owner == request.user %}true{% else %}false{% endif %}"
@@ -98,12 +98,11 @@
     </div>
 </div>
 
+{% if user.is_authenticated %}
 <div class="section">
     <h2>Тест по категории</h2>
     <a href="{% url 'category_test' %}?category_id={{ category.id }}" class="test-link">Перейти к тесту по категории</a>
 </div>
-
-{% if user.is_authenticated %}
 <div id="wordContextMenu" class="context-menu">
     <!-- Меню будет заполняться динамически -->
 </div>
