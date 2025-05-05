@@ -22,12 +22,12 @@ class Category(models.Model):
 
 class Word(models.Model):
     category = models.ManyToManyField(Category, related_name='words')
-    word = models.CharField(max_length=50, unique=True)
+    word = models.CharField(max_length=50)
     translation = models.CharField(max_length=50, null=False, blank=False)
     transcription = models.CharField(max_length=50, null=False, blank=False)
 
-    def __str__(self):
-        return f"{self.word} - {self.translation} - {self.transcription}\n{self.category}"
+    class Meta:
+        unique_together = ['word', 'translation', 'transcription']
 
 @receiver(m2m_changed, sender=Word.category.through)
 def delete_words_without_categories(sender, instance, action, **kwargs):
@@ -39,9 +39,9 @@ def delete_words_without_categories(sender, instance, action, **kwargs):
 def on_category_delete(sender, instance, **kwargs):
     words = Word.objects.filter(category=instance)
     for word in words:
-        if word.category.count() <= 1:
+        if word.category.count() == 1 and instance in word.category.all():
             word.delete()
-
+            
 class Learning_Session(models.Model):
     class Method(models.TextChoices):
         NEW_WORDS = "new_words", "New Words",

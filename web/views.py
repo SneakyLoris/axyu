@@ -6,6 +6,7 @@ import json
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models.functions import Coalesce
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Subquery
 from django.http import JsonResponse
@@ -472,14 +473,41 @@ def add_word_to_category_view(request, category_id):
             translation = form.cleaned_data['translation'].strip().lower()
             transcription = form.cleaned_data['transcription'].strip()
 
-            if Word.objects.filter(word__iexact=word_text, category=category).exists():
-                form.add_error('word', 'Это слово уже есть в данной категории')
-            else:
-                try:
-                    existing_word = Word.objects.filter(word__iexact=word_text).first()
+            try:
+                with transaction.atomic():
+                    if Word.objects.filter(
+                        word__iexact=word_text,
+                        translation__iexact=translation,
+                        transcription__iexact=transcription,
+                        category=category
+                    ).exists():
+                        form.add_error('word', 'Это слово уже есть в данной категории')
+                        return render(request, 'web/add_word.html', {'form': form, 'category': category})
+
+                    existing_word = Word.objects.filter(
+                        word__iexact=word_text,
+                        translation__iexact=translation,
+                        transcription__iexact=transcription
+                    ).exclude(category=category).first()
 
                     if existing_word:
                         existing_word.category.add(category)
+                        user = request.user
+                        
+                        Word_Repetition.objects.get_or_create(
+                            user=user,
+                            word=existing_word,
+                            defaults={
+                                'next_review': datetime.now() + timedelta(seconds=30),
+                                'repetition_count': 0
+                            }
+                        )
+                        
+                        Learned_Word.objects.get_or_create(
+                            user=user,
+                            word=existing_word
+                        )
+                        
                         messages.success(request, 'Слово добавлено в категорию')
                     else:
                         new_word = Word.objects.create(
@@ -488,14 +516,15 @@ def add_word_to_category_view(request, category_id):
                             transcription=transcription
                         )
                         new_word.category.add(category)
+                        
                         messages.success(request, 'Слово успешно создано и добавлено')
 
                     return redirect('categories_wordlist', category_name=category.name)
 
-                except IntegrityError:
-                    form.add_error('word', 'Ошибка: такое слово уже существует')
-                except Exception as e:
-                    form.add_error(None, f'Ошибка: {str(e)}')
+            except IntegrityError as e:
+                form.add_error('word', 'Ошибка: такое слово уже существует')
+            except Exception as e:
+                form.add_error(None, f'Ошибка: {str(e)}')
 
     else:
         form = AddWordForm()
@@ -539,7 +568,8 @@ def word_reset_progress(request, word_id):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     
 @login_required
-def word_edit(request, word_id):
+def word_edit(request, category_id, word_id):
+    category = get_object_or_404(Category, id=category_id, owner=request.user)
     word = get_object_or_404(Word, id=word_id)
     
     if not word.category.filter(owner=request.user).exists():
@@ -552,21 +582,61 @@ def word_edit(request, word_id):
             translation = form.cleaned_data['translation'].strip().lower()
             transcription = form.cleaned_data['transcription'].strip()
             
-            if Word.objects.filter(word__iexact=word_text).exclude(id=word.id).exists():
-                form.add_error('word', 'Такое слово уже существует')
-            else:
-                try:
+            try:
+                with transaction.atomic():
+                    if Word.objects.filter(
+                        word__iexact=word_text,
+                        translation__iexact=translation,
+                        transcription__iexact=transcription,
+                        category=category
+                    ).exclude(id=word.id).exists():
+                        form.add_error('word', 'Такое слово уже существует в этой категории')
+                        return render(request, 'web/edit_word.html', {'form': form, 'word': word})
+                    
+                    exact_duplicate = Word.objects.filter(
+                        word__iexact=word_text,
+                        translation__iexact=translation,
+                        transcription__iexact=transcription
+                    ).exclude(id=word.id).first()
+                    
+                    if exact_duplicate:
+                        exact_duplicate.category.add(category)
+                        
+                        user = request.user
+                        Word_Repetition.objects.filter(user=user, word=word).update(word=exact_duplicate)
+                        Learned_Word.objects.filter(user=user, word=word).update(word=exact_duplicate)
+                        Answer_Attempt.objects.filter(user=user, word=word).update(word=exact_duplicate)
+                        
+                        word.category.remove(category)
+                        
+                        messages.success(request, 'Слово объединено с существующим дубликатом')
+                        return redirect('categories_wordlist', category_name=category.name)
+                    
+                    if word.category.count() > 1:
+                        new_word = Word.objects.create(
+                            word=word_text,
+                            translation=translation,
+                            transcription=transcription
+                        )
+                        new_word.category.add(category)
+                        user = request.user
+                        word.category.remove(category)
+                        
+                        messages.success(request, 'Создана новая версия слова для этой категории')
+                        return redirect('categories_wordlist', category_name=category.name)
+                    
                     word.word = word_text
                     word.translation = translation
                     word.transcription = transcription
                     word.save()
-                    messages.success(request, 'Слово успешно обновлено')
                     
-                    first_category = word.category.first()
-                    return redirect('categories_wordlist', category_name=first_category.name)
-                
-                except Exception as e:
-                    form.add_error(None, f'Ошибка: {str(e)}')
+                    messages.success(request, 'Слово успешно обновлено')
+                    return redirect('categories_wordlist', category_name=category.name)
+            
+            except IntegrityError as e:
+                form.add_error(None, 'Ошибка базы данных при обновлении слова')
+            except Exception as e:
+                form.add_error(None, f'Неожиданная ошибка: {str(e)}')
     else:
         form = EditWordForm(initial={
             'word': word.word,
@@ -583,7 +653,20 @@ def word_edit(request, word_id):
 @login_required
 def word_delete(request, word_id):
     try:
-        Word.objects.get(id=word_id).delete()
-        return JsonResponse({'status': 'success', 'message': 'Слово удалено'})
+        word = get_object_or_404(Word, id=word_id)
+        
+        if not word.category.filter(owner=request.user).exists():
+            return JsonResponse({'status': 'error', 'message': 'Нет прав на удаление этого слова'}, status=403)
+        
+        with transaction.atomic():
+            user_categories = word.category.filter(owner=request.user)
+            word.category.remove(*user_categories)
+            if not Word.objects.filter(id=word_id).exists():
+                message = 'Слово полностью удалено'
+            else:
+                message = 'Слово удалено из ваших категорий, но осталось в других'
+            
+            return JsonResponse({'status': 'success', 'message': message})
+    
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

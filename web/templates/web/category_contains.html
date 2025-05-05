@@ -70,6 +70,7 @@
         {% for word in wordlist %}
         <div class="word-row status-{% if user.is_authenticated %}{{ word.status }}{% endif %}" 
             data-word-id="{{ word.id }}"
+            data-category-id="{{ category.id }}"
             data-status="{{ word.status }}"
             data-is-owner="{% if category.owner == request.user %}true{% else %}false{% endif %}"
             oncontextmenu="showWordContextMenu(event, this); return false;">

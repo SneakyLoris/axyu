@@ -1,4 +1,5 @@
 let currentWordId = null;
+let currentCategoryId = null;
 let currentWordText = '';
 let currentTranslation = '';
 let currentTranscription = '';
@@ -9,6 +10,7 @@ function showWordContextMenu(event, rowElement) {
     
     // Сохраняем данные слова
     currentWordId = rowElement.dataset.wordId;
+    currentCategoryId = rowElement.dataset.categoryId;
     const wordParts = rowElement.querySelector('.english-word').textContent.split('/');
     currentWordText = wordParts[0].trim();
     currentTranslation = rowElement.querySelector('.russian-word').textContent;
@@ -92,21 +94,21 @@ function closeContextMenu() {
 // Обработка клика по пункту меню
 async function handleMenuClick(e, action) {
     e.preventDefault();
-    if (!currentWordId) return;
+    if (!currentWordId || !currentCategoryId) return;
 
     const actions = {
-        'start-learning': { url: `/words/${currentWordId}/start_learning/` },
-        'mark-known': { url: `/words/${currentWordId}/mark_known/` },
-        'reset-progress': { url: `/words/${currentWordId}/reset_progress/` },
-        'edit': { url: `/words/${currentWordId}/edit/` },
+        'start-learning': { url: `/words/start_learning/${currentWordId}/` },
+        'mark-known': { url: `/words/mark_known/${currentWordId}/` },
+        'reset-progress': { url: `/words/reset_progress/${currentWordId}/` },
+        'edit': { url: `/words/edit/${currentCategoryId}/${currentWordId}/` },
         'delete': { 
-            url: `/words/${currentWordId}/delete/`,
+            url: `/words/delete/${currentWordId}/`,
             Confirm: true
         }
     };
 
     if (action === 'edit') {
-        window.location.href = `/words/${currentWordId}/edit/`;
+        window.location.href = `/words/edit/${currentCategoryId}/${currentWordId}/`;
         return;
     }
 
