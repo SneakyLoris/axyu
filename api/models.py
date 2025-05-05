@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -26,7 +28,6 @@ class Word(models.Model):
 
     def __str__(self):
         return f"{self.word} - {self.translation} - {self.transcription}\n{self.category}"
-
 
 @receiver(m2m_changed, sender=Word.category.through)
 def delete_words_without_categories(sender, instance, action, **kwargs):
@@ -70,7 +71,7 @@ class Answer_Attempt(models.Model):
 class Word_Repetition(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     word = models.ForeignKey(Word, on_delete=models.CASCADE)
-    next_review = models.DateTimeField()
+    next_review = models.DateTimeField(default=datetime.now() + timedelta(seconds=30))
     repetition_count = models.PositiveIntegerField(default=0)
 
     class Meta:

@@ -9,6 +9,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{% static 'web/js/cookie_utils.js' %}"></script>
 <script src="{% static 'web/js/words_filter.js' %}"></script>
 <script src="{% static 'web/js/word_actions.js' %}"></script>
 {% endblock %}
@@ -70,7 +71,8 @@
         <div class="word-row status-{{ word.status }}" 
             data-word-id="{{ word.id }}"
             data-status="{{ word.status }}"
-            oncontextmenu="showWordContextMenu(event, {{ word.id }}, '{{ word.status }}')">
+            data-is-owner="{% if category.owner == request.user %}true{% else %}false{% endif %}"
+            oncontextmenu="showWordContextMenu(event, this); return false;">
             <span class="english-word">{{ word.word }} /{{ word.transcription }}/</span>
             <span class="separator">—</span>
             <span class="russian-word">{{ word.translation }}</span>

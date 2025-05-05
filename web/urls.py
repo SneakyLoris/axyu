@@ -24,4 +24,9 @@ urlpatterns = [
     path('feedback/', feedback_view, name='feedback'),
     path('category/reset_progress/<int:category_id>/', reset_category_progress_view, name='reset_category_progress'),
     path('category/add_word/<int:category_id>/', add_word_to_category_view, name='add_word_to_category'),
+    path('words/<int:word_id>/start_learning/', word_start_learning, name='word_start_learning'),
+    path('words/<int:word_id>/mark_known/', word_mark_known, name='word_mark_known'),
+    path('words/<int:word_id>/reset_progress/', word_reset_progress, name='word_reset_progress'),
+    path('words/<int:word_id>/edit/', word_edit, name='word_edit'),
+    path('words/<int:word_id>/delete/', word_delete, name='word_delete'),
 ]

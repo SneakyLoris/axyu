@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.db.models.functions import Coalesce
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Subquery
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
 from django.shortcuts import render, redirect, get_object_or_404
@@ -502,3 +503,48 @@ def add_word_to_category_view(request, category_id):
         'form': form,
         'category': category
     })
+
+@login_required
+def word_start_learning(request, word_id):
+    try:
+        word = Word.objects.get(id=word_id)
+        Word_Repetition.objects.update_or_create(
+            user=request.user,
+            word=word
+        )
+        return JsonResponse({'status': 'success', 'message': 'Слово добавлено в изучаемые'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+def word_mark_known(request, word_id):
+    try:
+        word = Word.objects.get(id=word_id)
+        Word_Repetition.objects.filter(user=request.user, word=word).delete()
+        Learned_Word.objects.get_or_create(user=request.user, word=word)
+        return JsonResponse({'status': 'success', 'message': 'Слово помечено как известное'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+@login_required
+def word_reset_progress(request, word_id):
+    try:
+        word = Word.objects.get(id=word_id)
+        Word_Repetition.objects.filter(user=request.user, word=word).delete()
+        Learned_Word.objects.filter(user=request.user, word=word).delete()
+        return JsonResponse({'status': 'success', 'message': 'Слово помечено как известное'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+@login_required
+def word_edit(request, word_id):
+    pass
+
+@login_required
+def word_delete(request, word_id):
+    try:
+        Word.objects.get(id=word_id).delete()
+        return JsonResponse({'status': 'success', 'message': 'Слово удалено'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
