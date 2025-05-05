@@ -93,7 +93,7 @@ function closeContextMenu() {
 async function handleMenuClick(e, action) {
     e.preventDefault();
     if (!currentWordId) return;
-    
+
     const actions = {
         'start-learning': { url: `/words/${currentWordId}/start_learning/` },
         'mark-known': { url: `/words/${currentWordId}/mark_known/` },
@@ -105,21 +105,22 @@ async function handleMenuClick(e, action) {
         }
     };
 
-    const config = actions[action];
+    if (action === 'edit') {
+        window.location.href = `/words/${currentWordId}/edit/`;
+        return;
+    }
 
-    if (action == 'edit')
-        alert('Not implemented!!!!!!!');
+    const config = actions[action];
 
     if (!config) return;
 
     try {
-        // Подтверждение для опасных действий
         if (config.Confirm && !confirm('Вы уверены, что хотите удалить это слово?')) {
             return;
         }
 
         let response = await callDjangoView(config.url);
-        window.location.reload();
+    window.location.reload();
     } catch (error) {
         console.error('Ошибка:', error);
         alert('Произошла ошибка при выполнении операции');

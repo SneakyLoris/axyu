@@ -5,6 +5,7 @@ import json
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.db.models.functions import Coalesce
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Subquery
 from django.http import JsonResponse
@@ -25,7 +26,7 @@ from psycopg2 import IntegrityError
 from api.models import User, Category, Word, Learning_Category, \
     Learned_Word, Word_Repetition, Answer_Attempt
 from foreign_words.settings import BASE_DIR
-from web.forms import RegistrationForm, AuthForm, FeedbackForm, AddCategoryForm, EditCategoryForm, AddWordForm
+from web.forms import RegistrationForm, AuthForm, FeedbackForm, AddCategoryForm, EditCategoryForm, AddWordForm, EditWordForm
 
 
 def main_view(request):
@@ -539,7 +540,45 @@ def word_reset_progress(request, word_id):
     
 @login_required
 def word_edit(request, word_id):
-    pass
+    word = get_object_or_404(Word, id=word_id)
+    
+    if not word.category.filter(owner=request.user).exists():
+        raise PermissionDenied
+    
+    if request.method == 'POST':
+        form = EditWordForm(request.POST)
+        if form.is_valid():
+            word_text = form.cleaned_data['word'].strip().lower()
+            translation = form.cleaned_data['translation'].strip().lower()
+            transcription = form.cleaned_data['transcription'].strip()
+            
+            if Word.objects.filter(word__iexact=word_text).exclude(id=word.id).exists():
+                form.add_error('word', 'Такое слово уже существует')
+            else:
+                try:
+                    word.word = word_text
+                    word.translation = translation
+                    word.transcription = transcription
+                    word.save()
+                    messages.success(request, 'Слово успешно обновлено')
+                    
+                    first_category = word.category.first()
+                    return redirect('categories_wordlist', category_name=first_category.name)
+                
+                except Exception as e:
+                    form.add_error(None, f'Ошибка: {str(e)}')
+    else:
+        form = EditWordForm(initial={
+            'word': word.word,
+            'translation': word.translation,
+            'transcription': word.transcription
+        })
+    
+    return render(request, 'web/edit_word.html', {
+        'form': form,
+        'word': word
+    })
+
 
 @login_required
 def word_delete(request, word_id):

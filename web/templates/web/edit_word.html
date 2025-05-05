@@ -1,0 +1,35 @@
+{% extends 'web/base_template.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/forms.css' %}">
+{% endblock %}
+
+{% block title %}Добавить слово | {{ category.name }}{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Изменение слова</h1>
+    <form method="post" class="category-form">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {% for field in form %}
+        <div class="form-field">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.errors %}
+                <div class="field-errors">{{ field.errors }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="submit-button">Сохранить</button>
+    </form>
+</div>
+{% endblock %}

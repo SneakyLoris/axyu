@@ -108,3 +108,22 @@ class AddWordForm(forms.Form):
         max_length=50,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
+
+
+class EditWordForm(forms.Form):
+    word = forms.CharField(
+        label='Английское слово',
+        max_length=50,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    translation = forms.CharField(
+        label='Перевод',
+        max_length=50,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    transcription = forms.CharField(
+        label='Транскрипция',
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
