@@ -433,20 +433,38 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-.context-menu-item--danger {
-    color: #dc3545 !important; /* Красный цвет текста */
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    color: #333;
+    text-decoration: none;
 }
 
-.context-menu-item--danger .fas {
-    color: inherit; /* Наследуем цвет от родителя */
+.context-menu-item .fas {
+    width: 20px;
+    margin-right: 8px;
+    color: #666;
 }
 
 .context-menu-item--danger:hover {
-    background-color: #f8d7da !important; /* Светло-красный фон при наведении */
-    color: #721c24 !important; /* Темно-красный текст при наведении */
+    color: #d32f2f;
 }
 
-/* Для плавного перехода цвета */
-.context-menu-item {
-    transition: background-color 0.2s, color 0.2s;
+.context-menu-item--danger:hover .fas {
+    color: inherit;
+}
+
+/* Стиль для опасного пункта меню (удаление) */
+.context-menu-item--danger {
+    color: #d32f2f !important; /* Красный цвет текста */
+}
+
+.context-menu-item--danger .fas {
+    color: inherit !important; /* Иконка наследует цвет текста */
+}
+
+.context-menu-item--danger:hover {
+    background-color: #ffebee !important; /* Светло-красный фон при наведении */
+    color: #b71c1c !important; /* Более темный красный при наведении */
 }
