@@ -7,24 +7,50 @@ User = get_user_model()
 
 
 class RegistrationForm(forms.ModelForm):
-    password2 = forms.CharField(widget=forms.PasswordInput())
-
-    def clean(self):
-        cleaned_data = super().clean()
-        if cleaned_data["password"] != cleaned_data["password2"]:
-            self.add_error("password", "Пароли не совпадают")
-
-        return cleaned_data
+    password = forms.CharField(widget=forms.PasswordInput(), required=True)
+    password2 = forms.CharField(widget=forms.PasswordInput(), required=True)
 
     class Meta:
         model = User
         fields = ("email", "username", "password", "password2")
 
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("Пользователь с таким email уже существует")
+        return email
+    
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if User.objects.filter(username=username).exists():
+            raise forms.ValidationError("Пользователь с таким именем уже существует")
+        return username
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        required_fields = ("email", "username", "password", "password2")
+        for field in required_fields:
+            if not cleaned_data.get(field):
+                self.add_error(field, 'Это поле обязательно для заполнения')
+        
+        if cleaned_data["password"] != cleaned_data["password2"]:
+            self.add_error("password", "Пароли не совпадают")
+
+        return cleaned_data
+
 
 class AuthForm(forms.Form):
-    username = forms.CharField()
-    password = forms.CharField(widget=forms.PasswordInput())
-
+    username = forms.CharField(required=True, error_messages={
+        'required': 'Обязательное поле'
+    })
+    password = forms.CharField(
+        widget=forms.PasswordInput(),
+        required=True,
+        error_messages={
+            'required': 'Обязательное поле'
+        }
+    )
 
 class FeedbackForm(forms.ModelForm):
     class Meta:

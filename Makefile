@@ -6,7 +6,8 @@ DOCKER_DB_CONTAINER_NAME=$(DOCKER_DB_TAG)_container
 DOCKER_DB_CONTAINER_PORT=5432
 DOCKER_DB_LOCAL_PORT=5432
 WORDLISTS_TRANSLATED_DIR=wordlists/translated
-
+TEST_MODULES=web.tests
+COMMAND_TO_OPEN_HTML=firefox
 
 makemigrations:
 	$(PYTHON) $(MANAGE) makemigrations
@@ -25,3 +26,15 @@ load_words:
 
 run:
 	$(PYTHON) $(MANAGE) runserver
+
+tests:
+	$(PYTHON) $(MANAGE) test $(TEST_MODULES) --parallel
+
+coverage:
+	coverage run --branch $(MANAGE) test $(TEST_MODULES)
+	coverage report -m
+	coverage html
+	$(COMMAND_TO_OPEN_HTML) htmlcov/index.html
+	
+clean:
+	rm -rf htmlcov

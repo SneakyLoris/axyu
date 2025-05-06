@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 import random
 import json
 
@@ -9,7 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models.functions import Coalesce
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Subquery
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.shortcuts import render, redirect
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
 from django.shortcuts import render, redirect, get_object_or_404
@@ -18,7 +18,7 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.conf import settings
-
+from django.utils import timezone
 
 import os
 
@@ -61,11 +61,10 @@ def auth_view(request):
         form = AuthForm(data=request.POST)
         if form.is_valid():
             user = authenticate(**form.cleaned_data)
-            if user is None:
+            if user is None or not user.is_active:
                 form.add_error(None, "Введены неверные данные")
             else:
                 login(request, user)
-                # Session.objects.create(user=user)
                 return redirect("main")
 
     return render(request, "web/auth.html", {
@@ -86,19 +85,20 @@ def logout_view(request):
     logout(request)
     return redirect("main")
 
-
+@login_required
 def learning_view(request):
     return render(request, "web/learning.html")
 
-
+@login_required
 def learning_new_words_view(request):
     return render(request, "web/new_words.html")
 
-
+@login_required
 def learning_repeat_view(request):
     return render(request, "web/repeat_words.html")
 
 
+@login_required
 def learning_tests_view(request):
     categories = Category.objects.filter(
         Q(owner__isnull=True) | Q(owner_id=request.user.id)
@@ -114,6 +114,7 @@ def learning_tests_view(request):
     })
 
 
+@login_required
 def categories_view(request):
     categories = Category.objects.filter(
         Q(owner__isnull=True) | Q(owner_id=request.user.id)
@@ -129,14 +130,21 @@ def categories_view(request):
     })
 
 
+@login_required
 def category_test(request):
-    category_id = request.GET.get('category_id', '')
+    category_id = request.GET.get('category_id')
+
+    if not category_id:
+        raise Http404("Не указан ID категории")
 
     try:
-        category = Category.objects.get(id=category_id)
-    except Category.DoesNotExist:
-        # Либо выбрасывать 404, мол такой страницы нет
-        category = None
+        category = get_object_or_404(Category, id=category_id)
+
+        if category.owner not in [None, request.user]:
+            raise PermissionDenied("Нет доступа к этой категории")
+        
+    except ValueError:
+        raise Http404("Пустой ID категории")
 
     return render(request, "web/tests.html", {
         "category": category,
@@ -337,7 +345,7 @@ def stats_view(request):
     }
 
     # результат за неделю
-    week_dates = [(datetime.now() - timedelta(days=i)).strftime('%d.%m') for i in range(7)]
+    week_dates = [(timezone.now() - timedelta(days=i)).strftime('%d.%m') for i in range(7)]
     week_progress = [
         {'date': date, 'words': random.randint(1, 10), 'quizzes': random.randint(0, 3)}
         for date in week_dates
@@ -498,7 +506,7 @@ def add_word_to_category_view(request, category_id):
                             user=user,
                             word=existing_word,
                             defaults={
-                                'next_review': datetime.now() + timedelta(seconds=30),
+                                'next_review': timezone.now() + timedelta(seconds=30),
                                 'repetition_count': 0
                             }
                         )
