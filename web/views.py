@@ -19,6 +19,7 @@ from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.conf import settings
 from django.utils import timezone
+from django.core.serializers.json import DjangoJSONEncoder
 
 import os
 
@@ -352,12 +353,6 @@ def stats_view(request):
     ### Список изучаемых категорий
     categories = [l_cat.category for l_cat in Learning_Category.objects.filter(user=user)]
 
-    """
-    Хочу добавить к каждой категории сколько слов выучено
-    for cat in cats:
-        categories[cat.category.name] = 
-    """
-
     ### Данные для piePlot
     learned = len(Learned_Word.objects.filter(user=user))
     in_progress = len(Word_Repetition.objects.filter(user=user))
@@ -374,77 +369,37 @@ def stats_view(request):
         "type": 'pie'
     }]
 
-    ### Данные для графика посещения
+    ### Данные для heat plot
 
+    # По оси x дата, по оси у время, пересечение count(session_id)
     session_new_words = (Learning_Session.objects
                          .filter(user_id=user, method='new_words')
-                         .annotate(date=ExtractHour('start_time'))
-                         .values('date')
+                         .annotate(date=TruncDate('start_time'), time=ExtractHour('start_time'))
+                         .values('date', 'time')
                          .annotate(count=Count('id'))
                          .order_by('date')
                          )
 
     print(session_new_words)
 
+    date_data = [str(dt['date']) for dt in session_new_words]
+    time_data = [dt['time'] for dt in session_new_words]
+    count_data = [dt['count'] for dt in session_new_words]
+    heat_data = [{
+        'x': date_data,
+        'y': time_data,
+        'z': count_data,
+        'type': 'heatmap',
+    }]
 
-    #### Количество посещений в день
-    """sessions_count = (Session.objects
-                      .filter(user=user)
-                      .annotate(date=TruncDate('start_time'))
-                      .values('date')
-                      .annotate(count=Count('id'))
-                      .order_by('date')
-                      )
-
-    labels = [line["date"] for line in sessions_count]
-    data = [line["count"] for line in sessions_count]
-
-    visit_count_dataset = {
-        "labels": labels,
-        "datasets": [{
-            "label": "Количество входов на сайт",
-            "data": data,
-        }]
-    }
-
-    #### Время проведенное в день
-    def covert_time_to_hour(time: timedelta):
-        return time.seconds / 3600
-
-    sessions_time = (Session.objects
-                     .filter(user=user)
-                     .annotate(date=TruncDate('start_time'))
-                     .values('date')
-                     .annotate(sum=Sum(F('end_time') - F('start_time')))
-                     .order_by('date')
-                     )
-
-    data = [covert_time_to_hour(line["sum"]) for line in sessions_time]
-    labels = [line["date"] for line in sessions_time]
-
-    visit_time_dataset = {
-        "labels": labels,
-        "datasets": [{
-            "label": "Время проведенное на сайте",
-            "data": data,
-        }]
-    }
-"""
-    """
-    Список того, что можно визуализировать
-    - Изучаемые категории [х]
-    - Круговая диаграмма выученных слов (всего слов и сколько из них на стадии изучения и выученных) [x]
-    - График посещений страницы/время проведения на сайте (lineplot типа времени в день) []
-    - График выученных слов по дням/неделям/месяцам (гистограмма) []
-    """
+    print(heat_data)
 
     context = {
         'stats': stats,
         'categories': categories,
         'week_progress': week_progress,
         'pie_data': json.dumps(pie_data),
-        #'session_count_data': json.dumps(visit_count_dataset, cls=DjangoJSONEncoder),
-        #'session_time_data': json.dumps(visit_time_dataset, cls=DjangoJSONEncoder),
+        'heat_data': json.dumps(heat_data),
     }
 
     return render(request, 'web/stats.html', context)

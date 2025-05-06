@@ -62,19 +62,12 @@
 
 <div class="plots-container" id="plots">
     <script id="pie-data" type="application/json">{{ pie_data|safe }}</script>
-    <script id="session-time-data" type="application/json">{{ session_time_data|safe }}</script>
-    <script id="session-count-data" type="application/json">{{ session_count_data|safe }}</script>
+    <script id="heat-data" type="application/json">{{ heat_data|safe }}</script>
 
-    <div id="piePlot">
-    </div>
+    <div id="piePlot"></div>
 
-    <div class="plot">
-        <canvas id="sessionTimePlot"></canvas>
-    </div>
+    <div id="plot2"></div>
 
-    <div class="plot">
-        <canvas id="sessionCountPlot"></canvas>
-    </div>
 </div>
 
 
