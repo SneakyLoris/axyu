@@ -7,8 +7,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models.functions import Coalesce
-from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField, Subquery
+from django.db.models.functions import  Coalesce, TruncDate, TruncTime, ExtractHour
+from django.db.models import Q, Case, Count, When, Value, Exists, OuterRef, CharField, Subquery
 from django.http import JsonResponse, Http404
 from django.shortcuts import render, redirect
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
@@ -25,7 +25,7 @@ import os
 from psycopg2 import IntegrityError
 
 from api.models import User, Category, Word, Learning_Category, \
-    Learned_Word, Word_Repetition, Answer_Attempt
+    Learned_Word, Word_Repetition, Answer_Attempt, Learning_Session
 from foreign_words.settings import BASE_DIR
 from web.forms import RegistrationForm, AuthForm, FeedbackForm, AddCategoryForm, EditCategoryForm, AddWordForm, EditWordForm
 
@@ -382,6 +382,17 @@ def stats_view(request):
     }
 
     ### Данные для графика посещения
+
+    session_new_words = (Learning_Session.objects
+                         .filter(user_id=user, method='new_words')
+                         .annotate(date=ExtractHour('start_time'))
+                         .values('date')
+                         .annotate(count=Count('id'))
+                         .order_by('date')
+                         )
+
+    print(session_new_words)
+
 
     #### Количество посещений в день
     """sessions_count = (Session.objects
