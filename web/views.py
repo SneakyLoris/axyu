@@ -368,18 +368,11 @@ def stats_view(request):
         new_words
     ]
 
-    pie_data = {
+    pie_data = [{
         "labels": ["Learned", "In progress", "Not yet"],
-        "datasets": [{
-            "label": "some phrase",
-            "data": set_data,
-            "backgroundColor": [
-                'green',
-                'yellow',
-                'red'
-            ],
-        }]
-    }
+        "values": set_data,
+        "type": 'pie'
+    }]
 
     ### Данные для графика посещения
 

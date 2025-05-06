@@ -1,30 +1,25 @@
-const bar_ctx = document.getElementById('myChart');
-            new Chart(bar_ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['A', 'B', 'C'],
-                    datasets: [{
-                        label: 'Пример',
-                        data: [12, 19, 3],
-                    }]
-                }
-            });
+var test_data = [{
+  values: [19, 26, 55],
+  labels: ['Residential', 'Non-Residential', 'Utility'],
+  type: 'pie'
+}];
 
-const pie_ctx = document.getElementById('piePlot');
-new Chart(pie_ctx, {
-    type: 'doughnut',
-    data: JSON.parse(document.getElementById('pie-data').textContent)
-});
+var raw_data = JSON.parse(document.getElementById('pie-data')
 
+var pie_data = [{
+    values: raw_data.values,
+    labels: raw_data.labels,
+    type: 'pie'
+}];
 
-const session_time_ctx = document.getElementById('sessionTimePlot');
-new Chart(session_time_ctx, {
-    type: 'line',
-    data: JSON.parse(document.getElementById('session-time-data').textContent)
-});
+var layout = {
+  height: 400,
+  width: 500
+};
 
-const session_count_ctx = document.getElementById('sessionCountPlot');
-new Chart(session_count_ctx, {
-    type: 'bar',
-    data: JSON.parse(document.getElementById('session-count-data').textContent)
-});
+Plotly.newPlot('piePlot', [{
+  values: [19, 26, 55],
+  labels: ['Residential', 'Non-Residential', 'Utility'],
+  type: 'pie'
+}];, layout);
+
