@@ -38,22 +38,22 @@
 
 <div class="categories">
     {% for category in categories %}
-    {% if forloop.counter0|divisibleby:4 %}
-    <div class="category-row">{% endif %}
+        {% if forloop.counter0|divisibleby:4 %}
+            <div class="category-row">{% endif %}
 
-        <a href="{% url 'categories_wordlist' category.name %}" class="category-link">
-            <div class="category-card">
-                <h3>{{ category.name }}</h3>
-            </div>
-        </a>
+                <a href="{% url 'categories_wordlist' category.id %}" class="category-link">
+                    <div class="category-card">
+                        <h3>{{ category.name }}</h3>
+                    </div>
+                </a>
 
         {% if forloop.counter|divisibleby:4 or forloop.last %}
-    </div>
-    {% endif %}
+            </div>
+        {% endif %}
     {% empty %}
-    <div class="empty-categories">
-        <p>Пока нет ни одной категории</p>
-    </div>
+        <div class="empty-categories">
+            <p>Пока нет ни одной категории</p>
+        </div>
     {% endfor %}
 </div>
 
