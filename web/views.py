@@ -114,7 +114,6 @@ def learning_tests_view(request):
     })
 
 
-@login_required
 def categories_view(request):
     categories = Category.objects.filter(
         Q(owner__isnull=True) | Q(owner_id=request.user.id)
@@ -151,56 +150,53 @@ def category_test(request):
     })
 
 
-def categories_wordlist_view(request, category_name):
-    try:
-        category = Category.objects.get(name=category_name)
-        user = request.user if request.user.is_authenticated else None
+def categories_wordlist_view(request, category_id):
+    category = get_object_or_404(Category, id=category_id)
+    user = request.user if request.user.is_authenticated else None
+
+    if category.owner not in [None, user]:
+            raise PermissionDenied("Нет доступа к этой категории")
 
         # Базовый запрос для слов категории
-        words = Word.objects.filter(category=category)
+    words = Word.objects.filter(category=category)
 
         # Если пользователь аутентифицирован - добавляем аннотации
-        if user:
-            wordlist = words.annotate(
-                status=Case(
-                    When(
-                        Exists(Learned_Word.objects.filter(word=OuterRef('pk'), user=user)),
-                        then=Value('learned')
-                    ),
-                    When(
-                        Exists(Word_Repetition.objects.filter(word=OuterRef('pk'), user=user)),
-                        then=Value('in_progress')
-                    ),
-                    default=Value('new'),
-                    output_field=CharField()
+    if user:
+        wordlist = words.annotate(
+            status=Case(
+                When(
+                    Exists(Learned_Word.objects.filter(word=OuterRef('pk'), user=user)),
+                    then=Value('learned')
                 ),
-                repetition_count=Coalesce(
-                    Subquery(
-                        Word_Repetition.objects.filter(
-                            word=OuterRef('pk'),
-                            user=user
-                        ).values('repetition_count')[:1]
-                    ),
-                    Value(0)
-                )
-            ).distinct()
+                When(
+                    Exists(Word_Repetition.objects.filter(word=OuterRef('pk'), user=user)),
+                    then=Value('in_progress')
+                ),
+                default=Value('new'),
+                output_field=CharField()
+            ),
+            repetition_count=Coalesce(
+                Subquery(
+                    Word_Repetition.objects.filter(
+                        word=OuterRef('pk'),
+                        user=user
+                    ).values('repetition_count')[:1]
+                ),
+                Value(0)
+            )
+        ).distinct()
 
             # Добавляем прогресс в контекст (5 повторений = 100%)
-            wordlist = list(wordlist)
-            for word in wordlist:
-                word.repetition_progress = min(100, word.repetition_count * 20)
-        else:
+        wordlist = list(wordlist)
+        for word in wordlist:
+            word.repetition_progress = min(100, word.repetition_count * 20)
+    else:
             # Для неаутентифицированных пользователей
-            wordlist = words.annotate(
-                status=Value('new', output_field=CharField()),
-                repetition_count=Value(0),
-                repetition_progress=Value(0)
-            ).distinct()
-
-    except Category.DoesNotExist:
-        # Либо выбрасывать 404, мол такой страницы нет
-        category = None
-        wordlist = None
+        wordlist = words.annotate(
+            status=Value('new', output_field=CharField()),
+            repetition_count=Value(0),
+            repetition_progress=Value(0)
+        ).distinct()
 
     return render(request, "web/category_contains.html", {
         "wordlist": wordlist,
@@ -454,6 +450,9 @@ def stats_view(request):
 def reset_category_progress_view(request, category_id):
     category = get_object_or_404(Category, id=category_id)
 
+    if category.owner not in [None, request.user]:
+        raise PermissionDenied("Нет доступа к этой категории")
+
     words_in_category = Word.objects.filter(category=category)
 
     Learned_Word.objects.filter(
@@ -467,7 +466,7 @@ def reset_category_progress_view(request, category_id):
     ).delete()
 
     messages.success(request, f'Прогресс по категории "{category.name}" сброшен')
-    return redirect('categories_wordlist', category_name=category.name)
+    return redirect('categories_wordlist', category_id=category.id)
 
 
 @login_required
