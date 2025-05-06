@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models.functions import  Coalesce, TruncDate, TruncTime, ExtractHour
-from django.db.models import Q, Case, Count, When, Value, Exists, OuterRef, CharField, Subquery
+from django.db.models import Avg, Q, Case, Count, When, Value, Exists, OuterRef, CharField, Subquery
 from django.http import JsonResponse, Http404
 from django.shortcuts import render, redirect
 from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
@@ -331,24 +331,15 @@ def edit_category_view(request, category_id):
 def stats_view(request):
     user = request.user
 
-    # Эвелинино
     total_learned_words = len(Learned_Word.objects.filter(user=user))
     total_repetitions = len(Answer_Attempt.objects.filter(user=user))
+    avg_time_of_tests = Learning_Session.objects.filter(user_id=user, method='test').aggregate(Avg('duration'))
 
     stats = {
         'total_words': total_learned_words,
         'total_quizzes': total_repetitions,
-        'success_rate': random.randint(60, 95),
+        'avg_testing': str(round(avg_time_of_tests['duration__avg'], 2)),
     }
-
-    # результат за неделю
-    week_dates = [(timezone.now() - timedelta(days=i)).strftime('%d.%m') for i in range(7)]
-    week_progress = [
-        {'date': date, 'words': random.randint(1, 10), 'quizzes': random.randint(0, 3)}
-        for date in week_dates
-    ]
-
-    # Конец Эвелининого соло
 
     ### Список изучаемых категорий
     categories = [l_cat.category for l_cat in Learning_Category.objects.filter(user=user)]
@@ -370,7 +361,6 @@ def stats_view(request):
     }]
 
     ### Данные для heat plot
-
     # По оси x дата, по оси у время, пересечение count(session_id)
     session_new_words = (Learning_Session.objects
                          .filter(user_id=user, method='new_words')
@@ -379,8 +369,6 @@ def stats_view(request):
                          .annotate(count=Count('id'))
                          .order_by('date')
                          )
-
-    print(session_new_words)
 
     date_data = [str(dt['date']) for dt in session_new_words]
     time_data = [dt['time'] for dt in session_new_words]
@@ -392,7 +380,12 @@ def stats_view(request):
         'type': 'heatmap',
     }]
 
-    print(heat_data)
+    # илюзорная статистика
+    week_dates = [(timezone.now() - timedelta(days=i)).strftime('%d.%m') for i in range(7)]
+    week_progress = [
+        {'date': date, 'words': random.randint(1, 10), 'quizzes': random.randint(0, 3)}
+        for date in week_dates
+    ]
 
     context = {
         'stats': stats,

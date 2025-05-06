@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{% static 'web/css/header.css' %}">
     <link rel="stylesheet" href="{% static 'web/css/footer.css' %}">
     <link rel="stylesheet" href="{% static 'web/css/variables.css' %}">
+    <link rel="shortcut icon" href="{% static 'web/img/main_icon.png' %}">
     <script src="{% static 'web/js/base.js' %}"></script>
     {% block extra_css %}{% endblock %}
     {% block extra_js %}{% endblock %}
@@ -18,7 +19,7 @@
         <header>
             <div class="header-container">
                 <div class="logo-title">
-                    <div class="logo"></div>
+                    <img class="logo" src="{% static 'web/img/main_icon.png'%}" width="50px" height="50px">
                     <h1><a href="{% url 'main' %}" class="site-title">English Vocabulary Trainer</a></h1>
                 </div>
 
@@ -38,7 +39,7 @@
                         </button>
                         <div class="dropdown-content" id="dropdownContent">
                             <a href="{% url 'stats' %}">Моя успеваемость</a>
-                            <a href="{% url 'feedback' %}">обратная связь</a>
+                            <a href="{% url 'feedback' %}">Обратная связь</a>
                             <a href="{% url 'logout' %}">Выйти</a>
                         </div>
                     </div>
