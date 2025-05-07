@@ -122,17 +122,32 @@ class AddWordForm(forms.Form):
     word = forms.CharField(
         label='Английское слово',
         max_length=50,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        required=True,
+        error_messages={
+            'required': 'Поле "Английское слово" обязательно для заполнения',
+            'max_length': 'Максимальная длина английского слова - 50 символов'
+        }
     )
     translation = forms.CharField(
         label='Перевод',
         max_length=50,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        required=True,
+        error_messages={
+            'required': 'Поле "Перевод" обязательно для заполнения',
+            'max_length': 'Максимальная длина перевода - 50 символов'
+        }
     )
     transcription = forms.CharField(
-        label='Транскрипция',
+        label='Транскрипция (необязательно)',
         max_length=50,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        required=False,
+        empty_value='',
+        error_messages={
+            'max_length': 'Максимальная длина транскрипции - 50 символов'
+        }
     )
 
 

@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models.signals import pre_delete, m2m_changed
 from django.dispatch import receiver
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -71,7 +72,7 @@ class Answer_Attempt(models.Model):
 class Word_Repetition(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     word = models.ForeignKey(Word, on_delete=models.CASCADE)
-    next_review = models.DateTimeField(default=datetime.now() + timedelta(seconds=30))
+    next_review = models.DateTimeField(default=timezone.now() + timedelta(seconds=30))
     repetition_count = models.PositiveIntegerField(default=0)
 
     class Meta:

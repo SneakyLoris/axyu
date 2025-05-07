@@ -20,6 +20,7 @@ from django.core.management import call_command
 from django.conf import settings
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
+from django.views.decorators.http import require_http_methods
 
 import os
 
@@ -430,7 +431,7 @@ def add_word_to_category_view(request, category_id):
         if form.is_valid():
             word_text = form.cleaned_data['word'].strip().lower()
             translation = form.cleaned_data['translation'].strip().lower()
-            transcription = form.cleaned_data['transcription'].strip()
+            transcription = form.cleaned_data['transcription'].strip().lower()
 
             try:
                 with transaction.atomic():
@@ -451,22 +452,6 @@ def add_word_to_category_view(request, category_id):
 
                     if existing_word:
                         existing_word.category.add(category)
-                        user = request.user
-                        
-                        Word_Repetition.objects.get_or_create(
-                            user=user,
-                            word=existing_word,
-                            defaults={
-                                'next_review': timezone.now() + timedelta(seconds=30),
-                                'repetition_count': 0
-                            }
-                        )
-                        
-                        Learned_Word.objects.get_or_create(
-                            user=user,
-                            word=existing_word
-                        )
-                        
                         messages.success(request, 'Слово добавлено в категорию')
                     else:
                         new_word = Word.objects.create(
@@ -478,7 +463,7 @@ def add_word_to_category_view(request, category_id):
                         
                         messages.success(request, 'Слово успешно создано и добавлено')
 
-                    return redirect('categories_wordlist', category_name=category.name)
+                    return redirect('categories_wordlist', category_id=category.id)
 
             except IntegrityError as e:
                 form.add_error('word', 'Ошибка: такое слово уже существует')
@@ -493,36 +478,65 @@ def add_word_to_category_view(request, category_id):
         'category': category
     })
 
+@require_http_methods(["POST"])
 @login_required
 def word_start_learning(request, word_id):
     try:
         word = Word.objects.get(id=word_id)
-        Word_Repetition.objects.update_or_create(
+
+        if not word.category.filter(Q(owner=request.user) | Q(owner__isnull=True)).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Нет доступа к этому слову'
+            }, status=403)
+        
+        Word_Repetition.objects.get_or_create(
             user=request.user,
             word=word
         )
-        return JsonResponse({'status': 'success', 'message': 'Слово добавлено в изучаемые'})
+        return JsonResponse({'status': 'success', 'message': 'Слово добавлено в изучаемые'}, status=200)
+    except Word.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Слово не найдено'}, status=404)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
-
+@require_http_methods(["POST"])
 @login_required
 def word_mark_known(request, word_id):
     try:
         word = Word.objects.get(id=word_id)
+
+        if not word.category.filter(Q(owner=request.user) | Q(owner__isnull=True)).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Нет доступа к этому слову'
+            }, status=403)
+        
         Word_Repetition.objects.filter(user=request.user, word=word).delete()
         Learned_Word.objects.get_or_create(user=request.user, word=word)
-        return JsonResponse({'status': 'success', 'message': 'Слово помечено как известное'})
+        return JsonResponse({'status': 'success', 'message': 'Слово помечено как известное'}, status=200)
+    except Word.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Слово не найдено'}, status=404)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
+@require_http_methods(["POST"])
 @login_required
 def word_reset_progress(request, word_id):
     try:
         word = Word.objects.get(id=word_id)
+
+        if not word.category.filter(Q(owner=request.user) | Q(owner__isnull=True)).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Нет доступа к этому слову'
+            }, status=403)
+        
         Word_Repetition.objects.filter(user=request.user, word=word).delete()
         Learned_Word.objects.filter(user=request.user, word=word).delete()
-        return JsonResponse({'status': 'success', 'message': 'Слово помечено как известное'})
+        return JsonResponse({'status': 'success', 'message': 'Прогресс по слову сброшен'})
+    except Word.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Слово не найдено'}, status=404)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     
