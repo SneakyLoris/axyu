@@ -2928,3 +2928,116 @@ class RemoveCategoryViewTests(TestCase):
 
         self.assertTrue(Word.objects.filter(id=self.word_user.id).exists())
 
+class EditCategoryViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='123')
+        self.other_user = User.objects.create_user(username='otheruser', password='123')
+        self.category = Category.objects.create(
+            name='Test Category',
+            owner=self.user,
+            description='Test Description'
+        )
+        self.url = reverse('edit_category', args=[self.category.id])
+    
+    def test_valid_form(self):
+        """Тест валидной формы"""
+        form_data = {
+            'name': 'New Name',
+            'description': 'New Description'
+        }
+        form = EditCategoryForm(data=form_data, instance=self.category, user=self.user)
+        self.assertTrue(form.is_valid())
+    
+    def test_same_name(self):
+        """Тест сохранения с тем же именем"""
+        form_data = {
+            'name': 'Test Category',
+            'description': 'New Description'
+        }
+        form = EditCategoryForm(data=form_data, instance=self.category, user=self.user)
+        self.assertTrue(form.is_valid())
+
+    def test_everything_same(self):
+        """Тест без изменений"""
+        form_data = {
+            'name': 'Test Category', 
+            'description': 'Test Description'
+        }
+        form = EditCategoryForm(data=form_data, instance=self.category, user=self.user)
+        self.assertTrue(form.is_valid())
+    
+    def test_duplicate_name(self):
+        """Тест дублирования имени"""
+        Category.objects.create(name='Existing', owner=self.user)
+        form_data = {
+            'name': 'Existing',
+            'description': 'Test'
+        }
+        form = EditCategoryForm(data=form_data, instance=self.category, user=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('У вас уже есть категория с таким названием.', form.errors['name'])
+    
+    def test_common_category_name(self):
+        """Тест использования имени общей категории"""
+        Category.objects.create(name='Common', owner=None)
+        form_data = {
+            'name': 'Common',
+            'description': 'Test'
+        }
+        form = EditCategoryForm(data=form_data, instance=self.category, user=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('Категория с таким названием уже существует как общая.', form.errors['name'])
+    
+    def test_empty_name(self):
+        """Тест пустого имени"""
+        form_data = {
+            'name': '   ',
+            'description': 'Test'
+        }
+        form = EditCategoryForm(data=form_data, instance=self.category, user=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('Обязательное поле.', form.errors['name'])
+    
+    def test_edit_category_success(self):
+        """Успешное редактирование категории"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(self.url, {
+            'name': 'Updated Category',
+            'description': 'Updated Description'
+        })
+        self.assertEqual(response.status_code, 302)
+        updated = Category.objects.get(id=self.category.id)
+        self.assertEqual(updated.name, 'Updated Category')
+        self.assertEqual(updated.description, 'Updated Description')
+    
+    def test_edit_other_user_category(self):
+        """Попытка редактирования чужой категории"""
+        self.client.login(username='otheruser', password='123')
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_edit_common_category(self):
+        """Попытка редактирования общей категории"""
+        common_category = Category.objects.create(
+            name='Common Category',
+            description='Common Description',
+            owner=None
+        )
+        self.client.login(username='otheruser', password='123')
+        response = self.client.get(reverse('edit_category', args=[common_category.id]))
+        self.assertEqual(response.status_code, 404)
+    
+    def test_unauthenticated_access(self):
+        """Доступ без авторизации"""
+        response = self.client.get(self.url)
+        self.assertRedirects(response, f"{reverse('login')}?next={self.url}")
+    
+    def test_invalid_form(self):
+        """Тест невалидной формы"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(self.url, {
+            'name': '',  # Пустое имя
+            'description': 'Test'
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('Обязательное поле.', response.context['form'].errors['name'])

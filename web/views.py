@@ -287,7 +287,6 @@ def add_category_view(request):
 @login_required
 def edit_category_view(request, category_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
-    old_name = category.name
 
     if request.method == 'POST':
         form = EditCategoryForm(
@@ -303,54 +302,9 @@ def edit_category_view(request, category_id):
                 'category': category
             }, status=400)
         
-        new_category = form.save(commit=False)
-        name_changed = old_name != new_category.name
-        user_upload_dir = os.path.join('tmp', str(request.user.id))
-        
-        # Обработка файла
-        if 'word_file' in request.FILES:
-            new_file = request.FILES['word_file']
-            old_file_path = os.path.join(user_upload_dir, f"{old_name}.txt")
-            new_file_path = os.path.join(user_upload_dir, f"{new_category.name}.txt")
-
-            # Удаляем старый файл
-            if default_storage.exists(old_file_path):
-                default_storage.delete(old_file_path)
-
-            # Создаем директорию, если ее нет
-            dir_path = os.path.dirname(default_storage.path(new_file_path))
-            os.makedirs(dir_path, exist_ok=True)
-            
-            # Сохраняем новый файл
-            with default_storage.open(new_file_path, 'wb+') as destination:
-                for chunk in new_file.chunks():
-                    destination.write(chunk)
-            
-            # Обновляем слова
-            try:
-                Word.objects.filter(category=category).delete()
-                call_command(
-                    'load_words',
-                    dir_path=os.path.abspath(default_storage.path(user_upload_dir)),
-                    user_name=request.user.username,
-                    verbosity=0
-                )
-            except Exception as e:
-                messages.error(request, f'Ошибка при загрузке слов: {str(e)}')
-                return redirect('edit_category', category_id=category.id)
-        
-        # Если изменилось только имя
-        elif name_changed:
-            old_file_path = os.path.join(user_upload_dir, f"{old_name}.txt")
-            new_file_path = os.path.join(user_upload_dir, f"{new_category.name}.txt")
-            if default_storage.exists(old_file_path):
-                default_storage.save(new_file_path, default_storage.open(old_file_path))
-                default_storage.delete(old_file_path)
-        
-        new_category.save()
-        return redirect('categories_wordlist', category_id=new_category.id)
+        form.save()
+        return redirect('categories_wordlist', category_id=category.id)
     
-    # GET запрос
     form = EditCategoryForm(instance=category, user=request.user)
     return render(request, 'web/edit_category.html', {
         'form': form,

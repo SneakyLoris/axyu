@@ -113,12 +113,6 @@ class AddCategoryForm(forms.ModelForm):
     
 
 class EditCategoryForm(forms.ModelForm):
-    word_file = forms.FileField(
-        label='Новый файл со словами',
-        help_text='Загрузите новый .txt файл (старый будет удален)',
-        required=False
-    )
-
     class Meta:
         model = Category
         fields = ['name', 'description']
