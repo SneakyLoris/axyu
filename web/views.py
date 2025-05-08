@@ -159,10 +159,8 @@ def categories_wordlist_view(request, category_id):
     if category.owner not in [None, user]:
             raise PermissionDenied("Нет доступа к этой категории")
 
-        # Базовый запрос для слов категории
     words = Word.objects.filter(category=category)
 
-        # Если пользователь аутентифицирован - добавляем аннотации
     if user:
         wordlist = words.annotate(
             status=Case(
@@ -188,12 +186,10 @@ def categories_wordlist_view(request, category_id):
             )
         ).distinct()
 
-            # Добавляем прогресс в контекст (5 повторений = 100%)
         wordlist = list(wordlist)
         for word in wordlist:
             word.repetition_progress = min(100, word.repetition_count * 20)
     else:
-            # Для неаутентифицированных пользователей
         wordlist = words.annotate(
             status=Value('new', output_field=CharField()),
             repetition_count=Value(0),
@@ -206,16 +202,21 @@ def categories_wordlist_view(request, category_id):
         "highlight_word": request.GET.get('highlight', ''),
     })
 
-
 @login_required
 def remove_category_view(request, category_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
 
-    user_upload_dir = os.path.join(settings.BASE_DIR, 'wordlists', 'translated', 'user_uploads', str(request.user.id))
-    file_path = os.path.join(user_upload_dir, f"{category.name}.txt")
+    upload_path = os.path.join(
+        'tmp',
+        str(request.user.id),
+        f'{category.name}.txt'
+    )
+    try:
+        if default_storage.exists(upload_path):
+            default_storage.delete(upload_path)
+    except Exception:
+        pass
 
-    if os.path.exists(file_path):
-        os.remove(file_path)
 
     category.delete()
 
@@ -238,37 +239,45 @@ def feedback_view(request):
 @login_required
 def add_category_view(request):
     if request.method == 'POST':
-        form = AddCategoryForm(request.POST, request.FILES)
-        if form.is_valid():
-            category = form.save(commit=False)
-            category.owner = request.user
-            category.save()
+        form = AddCategoryForm(request.POST, request.FILES, user=request.user)
+        if not form.is_valid():
+            return render(request, 'web/add_category.html', {'form': form}, status=400)
 
-            word_file = request.FILES['word_file']
-            user_upload_dir = os.path.join(BASE_DIR, 'wordlists', 'translated', 'user_uploads', str(request.user.id))
-            os.makedirs(user_upload_dir, exist_ok=True)
+        category = form.save(commit=False)
+        category.owner = request.user
+        category.save()
 
-            file_name = f"{category.name}.txt"
-            file_path = os.path.join(user_upload_dir, file_name)
+        word_file = request.FILES.get('word_file')
 
-            with default_storage.open(file_path, 'wb+') as destination:
-                for chunk in word_file.chunks():
-                    destination.write(chunk)
+        upload_path = os.path.join(
+            'tmp', 
+            str(request.user.id),
+            f'{category.name}.txt'
+        )   
 
-            try:
-                call_command(
-                    'load_words',
-                    os.path.abspath(user_upload_dir),
-                    verbosity=0
-                )
-            except Exception as e:
-                print(f"Error loading words: {e}")
-                return render(request, 'web/add_category.html', {
-                    'form': form,
-                    'error': 'Ошибка при загрузке слов. Проверьте формат файла.'
-                })
+        file_path = default_storage.save(upload_path, word_file)
+        absolute_file_path = default_storage.path(file_path)
+            
+        with default_storage.open(file_path, 'wb+') as destination:
+            for chunk in word_file.chunks():
+                destination.write(chunk)
 
-            return redirect('categories')
+        try:
+            call_command(
+                'load_words',
+                dir_path=os.path.dirname(absolute_file_path),
+                user_name=request.user.username,
+                verbosity=0
+            )
+
+        except Exception :
+            default_storage.delete(upload_path)
+            return render(request, 'web/add_category.html', {
+                'form': form,
+                'error': 'Ошибка при загрузке слов. Проверьте формат файла.'
+            }, status=400)
+
+        return redirect('categories')
     else:
         form = AddCategoryForm()
 
@@ -279,55 +288,74 @@ def add_category_view(request):
 def edit_category_view(request, category_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
     old_name = category.name
-    file_changed = False
 
     if request.method == 'POST':
-        form = EditCategoryForm(request.POST, request.FILES, instance=category)
-        if form.is_valid():
-            new_category = form.save()
-            user_upload_dir = os.path.join(BASE_DIR, 'wordlists', 'translated', 'user_uploads', str(request.user.id))
+        form = EditCategoryForm(
+            request.POST, 
+            request.FILES, 
+            instance=category, 
+            user=request.user
+        )
+        
+        if not form.is_valid():
+            return render(request, 'web/edit_category.html', {
+                'form': form,
+                'category': category
+            }, status=400)
+        
+        new_category = form.save(commit=False)
+        name_changed = old_name != new_category.name
+        user_upload_dir = os.path.join('tmp', str(request.user.id))
+        
+        # Обработка файла
+        if 'word_file' in request.FILES:
+            new_file = request.FILES['word_file']
             old_file_path = os.path.join(user_upload_dir, f"{old_name}.txt")
             new_file_path = os.path.join(user_upload_dir, f"{new_category.name}.txt")
 
-            # Обработка нового файла
-            if 'word_file' in request.FILES:
-                file_changed = True
-                new_file = request.FILES['word_file']
+            # Удаляем старый файл
+            if default_storage.exists(old_file_path):
+                default_storage.delete(old_file_path)
 
-                if os.path.exists(old_file_path):
-                    os.remove(old_file_path)
-
-                # Сохраняем новый файл
-                with default_storage.open(new_file_path, 'wb+') as destination:
-                    for chunk in new_file.chunks():
-                        destination.write(chunk)
-
-            # Переименование файла, если изменилось название категории (без замены файла)
-            elif old_name != new_category.name and os.path.exists(old_file_path):
-                os.rename(old_file_path, new_file_path)
-
-            if file_changed:
-                try:
-                    Word.objects.filter(category=category).delete()
-                    call_command(
-                        'load_words',
-                        os.path.abspath(user_upload_dir),
-                        verbosity=0
-                    )
-                except Exception as e:
-                    print(f"Error loading words: {e}")
-                    messages.error(request, 'Ошибка при загрузке слов. Проверьте формат файла.')
-                    return redirect('edit_category', category_id=category.id)
-
-            return redirect('categories_wordlist', category_name=new_category.name)
-    else:
-        form = EditCategoryForm(instance=category)
-
+            # Создаем директорию, если ее нет
+            dir_path = os.path.dirname(default_storage.path(new_file_path))
+            os.makedirs(dir_path, exist_ok=True)
+            
+            # Сохраняем новый файл
+            with default_storage.open(new_file_path, 'wb+') as destination:
+                for chunk in new_file.chunks():
+                    destination.write(chunk)
+            
+            # Обновляем слова
+            try:
+                Word.objects.filter(category=category).delete()
+                call_command(
+                    'load_words',
+                    dir_path=os.path.abspath(default_storage.path(user_upload_dir)),
+                    user_name=request.user.username,
+                    verbosity=0
+                )
+            except Exception as e:
+                messages.error(request, f'Ошибка при загрузке слов: {str(e)}')
+                return redirect('edit_category', category_id=category.id)
+        
+        # Если изменилось только имя
+        elif name_changed:
+            old_file_path = os.path.join(user_upload_dir, f"{old_name}.txt")
+            new_file_path = os.path.join(user_upload_dir, f"{new_category.name}.txt")
+            if default_storage.exists(old_file_path):
+                default_storage.save(new_file_path, default_storage.open(old_file_path))
+                default_storage.delete(old_file_path)
+        
+        new_category.save()
+        return redirect('categories_wordlist', category_id=new_category.id)
+    
+    # GET запрос
+    form = EditCategoryForm(instance=category, user=request.user)
     return render(request, 'web/edit_category.html', {
         'form': form,
         'category': category
     })
-
 
 def stats_view(request):
     user = request.user
@@ -553,7 +581,7 @@ def word_edit(request, category_id, word_id):
         if form.is_valid():
             word_text = form.cleaned_data['word'].strip().lower()
             translation = form.cleaned_data['translation'].strip().lower()
-            transcription = form.cleaned_data['transcription'].strip()
+            transcription = form.cleaned_data['transcription'].strip().lower()
             
             try:
                 with transaction.atomic():
@@ -583,7 +611,7 @@ def word_edit(request, category_id, word_id):
                         word.category.remove(category)
                         
                         messages.success(request, 'Слово объединено с существующим дубликатом')
-                        return redirect('categories_wordlist', category_name=category.name)
+                        return redirect('categories_wordlist', category_id=category.id)
                     
                     if word.category.count() > 1:
                         new_word = Word.objects.create(
@@ -596,7 +624,7 @@ def word_edit(request, category_id, word_id):
                         word.category.remove(category)
                         
                         messages.success(request, 'Создана новая версия слова для этой категории')
-                        return redirect('categories_wordlist', category_name=category.name)
+                        return redirect('categories_wordlist', category_id=category.id)
                     
                     word.word = word_text
                     word.translation = translation
@@ -604,11 +632,12 @@ def word_edit(request, category_id, word_id):
                     word.save()
                     
                     messages.success(request, 'Слово успешно обновлено')
-                    return redirect('categories_wordlist', category_name=category.name)
+                    return redirect('categories_wordlist', category_id=category.id)
             
             except IntegrityError as e:
                 form.add_error(None, 'Ошибка базы данных при обновлении слова')
             except Exception as e:
+                print(e)
                 form.add_error(None, f'Неожиданная ошибка: {str(e)}')
     else:
         form = EditWordForm(initial={
@@ -624,22 +653,39 @@ def word_edit(request, category_id, word_id):
 
 
 @login_required
-def word_delete(request, word_id):
+def word_delete(request, category_id, word_id):
     try:
+        category = get_object_or_404(Category, id=category_id, owner=request.user)
         word = get_object_or_404(Word, id=word_id)
         
-        if not word.category.filter(owner=request.user).exists():
-            return JsonResponse({'status': 'error', 'message': 'Нет прав на удаление этого слова'}, status=403)
+        if not word.category.filter(id=category.id).exists():
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'Слово не найдено в указанной категории'
+            }, status=404)
         
         with transaction.atomic():
-            user_categories = word.category.filter(owner=request.user)
-            word.category.remove(*user_categories)
-            if not Word.objects.filter(id=word_id).exists():
-                message = 'Слово полностью удалено'
-            else:
-                message = 'Слово удалено из ваших категорий, но осталось в других'
+            categories_count = word.category.count()
+            word.category.remove(category)
             
-            return JsonResponse({'status': 'success', 'message': message})
-    
+            if categories_count > 1:
+                message = 'Слово удалено из категории'
+            else:
+                message = 'Слово полностью удалено'
+            
+            return JsonResponse({
+                'status': 'success', 
+                'message': message
+            })
+            
+    except Http404:
+        return JsonResponse({
+            'status': 'error', 
+            'message': 'Категория или слово не найдены'
+        }, status=404)
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        return JsonResponse({
+            'status': 'error', 
+            'message': f'Ошибка при удалении: {str(e)}'
+        }, status=400)
+    

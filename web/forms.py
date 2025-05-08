@@ -34,8 +34,11 @@ class RegistrationForm(forms.ModelForm):
             if not cleaned_data.get(field):
                 self.add_error(field, 'Это поле обязательно для заполнения')
         
-        if cleaned_data["password"] != cleaned_data["password2"]:
-            self.add_error("password", "Пароли не совпадают")
+        password = cleaned_data.get("password")
+        password2 = cleaned_data.get("password2")
+    
+        if password and password2 and password != password2:
+            self.add_error("password2", "Пароли не совпадают")
 
         return cleaned_data
 
@@ -89,11 +92,25 @@ class AddCategoryForm(forms.ModelForm):
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
         }
-        error_messages = {
-            'name': {
-                'unique': "Категория с таким названием уже существует.",
-            }
-        }
+
+    def __init__(self, *args, **kwargs):
+        self.current_user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_name(self):
+        name = self.cleaned_data['name'].strip()
+        
+        if not self.current_user:
+            raise forms.ValidationError("Пользователь не определен")
+        
+        if Category.objects.filter(name=name, owner=self.current_user).exists():
+            raise forms.ValidationError("У вас уже есть категория с таким названием.")
+        
+        if Category.objects.filter(name=name, owner=None).exists():
+            raise forms.ValidationError("Категория с таким названием уже существует как общая.")
+        
+        return name
+    
 
 class EditCategoryForm(forms.ModelForm):
     word_file = forms.FileField(
@@ -107,16 +124,36 @@ class EditCategoryForm(forms.ModelForm):
         fields = ['name', 'description']
         labels = {
             'name': 'Название категории',
-            'description': 'Описание'
+            'description': 'Описание (необязательно)'
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
         }
-        error_messages = {
-            'name': {
-                'unique': "Категория с таким названием уже существует.",
-            }
-        }
+
+    def __init__(self, *args, **kwargs):
+        self.current_user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        self.original_name = self.instance.name if self.instance else None
+
+    def clean_name(self):
+        name = self.cleaned_data['name'].strip()
+        
+        if not name:
+            raise forms.ValidationError("Обязательное поле.")
+
+        if not self.current_user:
+            raise forms.ValidationError("Пользователь не определен")
+        
+        if hasattr(self, 'original_name') and name == self.original_name:
+            return name
+            
+        if Category.objects.filter(name=name, owner=self.current_user).exists():
+            raise forms.ValidationError("У вас уже есть категория с таким названием.")
+        
+        if Category.objects.filter(name=name, owner=None).exists():
+            raise forms.ValidationError("Категория с таким названием уже существует как общая.")
+            
+        return name
 
 class AddWordForm(forms.Form):
     word = forms.CharField(
@@ -155,16 +192,29 @@ class EditWordForm(forms.Form):
     word = forms.CharField(
         label='Английское слово',
         max_length=50,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        required=True,
+        error_messages={
+            'required': 'Поле "Английское слово" обязательно для заполнения',
+            'max_length': 'Максимальная длина английского слова - 50 символов'
+        }
     )
     translation = forms.CharField(
         label='Перевод',
         max_length=50,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        required=True,
+        error_messages={
+            'required': 'Поле "Перевод" обязательно для заполнения',
+            'max_length': 'Максимальная длина перевода - 50 символов'
+        }
     )
     transcription = forms.CharField(
         label='Транскрипция',
         max_length=50,
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        error_messages={
+            'max_length': 'Максимальная длина транскрипции - 50 символов'
+        }
     )

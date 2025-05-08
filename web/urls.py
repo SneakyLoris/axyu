@@ -18,9 +18,9 @@ urlpatterns = [
     ##########################################
     path('categories', categories_view, name='categories'),
     path('categories/<int:category_id>', categories_wordlist_view, name='categories_wordlist'),
-    path('category/add', add_category_view, name='add_category'),
-    path('category/remove/<int:category_id>', remove_category_view, name='remove_category'),
-    path('category/edit/<int:category_id>', edit_category_view, name='edit_category'),
+    path('category/add/', add_category_view, name='add_category'),
+    path('category/remove/<int:category_id>/', remove_category_view, name='remove_category'),
+    path('category/edit/<int:category_id>/', edit_category_view, name='edit_category'),
     path('feedback/', feedback_view, name='feedback'),
     path('category/reset_progress/<int:category_id>/', reset_category_progress_view, name='reset_category_progress'),
     path('category/add_word/<int:category_id>/', add_word_to_category_view, name='add_word_to_category'),
@@ -28,5 +28,5 @@ urlpatterns = [
     path('words/mark_known/<int:word_id>/', word_mark_known, name='word_mark_known'),
     path('words/reset_progress/<int:word_id>/', word_reset_progress, name='word_reset_progress'),
     path('words/edit/<int:category_id>/<int:word_id>/', word_edit, name='word_edit'),
-    path('words/delete/<int:word_id>/', word_delete, name='word_delete'),
+    path('words/delete/<int:category_id>/<int:word_id>/', word_delete, name='word_delete'),
 ]

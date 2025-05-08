@@ -1,18 +1,22 @@
-from django.test import TestCase, Client
+import shutil
+from unittest.mock import patch
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.models import AnonymousUser
 from api.models import Category, Word, Learned_Word, Word_Repetition, Learning_Category, Feedback
-from web.forms import AddWordForm, RegistrationForm, AuthForm, FeedbackForm
+from web.forms import AddCategoryForm, AddWordForm, EditCategoryForm, EditWordForm, RegistrationForm, AuthForm, FeedbackForm
 import os
 import json
 
+from django.core.files.base import ContentFile
 from django.contrib.messages import get_messages
 from django.contrib import messages
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
+from django.core.files.storage import default_storage
 
 User = get_user_model()
 
@@ -30,6 +34,7 @@ class AuthViewsTest(TestCase):
     def test_get_request(self):
         """Тест отображения формы при GET-запросе"""
         response = self.client.get(self.url)
+        
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'web/registration.html')
         self.assertIsInstance(response.context['form'], RegistrationForm)
@@ -83,23 +88,23 @@ class AuthViewsTest(TestCase):
         self.assertFalse(response.context['is_success'])
         self.assertIn('email', response.context['form'].errors)
 
-def test_missing_fields(self):
-    """Тест с отсутствующими обязательными полями"""
-    required_fields = ['username', 'email', 'password', 'password2']
-    
-    for field in required_fields:
-        with self.subTest(field=field):
-            incomplete_data = self.valid_data.copy()
-            del incomplete_data[field]
-            
-            response = self.client.post(self.url, data=incomplete_data)
-            
-            self.assertEqual(response.status_code, 200)
-            self.assertFalse(response.context['is_success'])
-            self.assertIn(field, response.context['form'].errors)
+    def test_missing_fields(self):
+        """Тест с отсутствующими обязательными полями"""
+        required_fields = ['username', 'email', 'password', 'password2']
         
-            error_msg = str(response.context['form'].errors[field])
-            self.assertIn('обязател', error_msg.lower())
+        for field in required_fields:
+            with self.subTest(field=field):
+                incomplete_data = self.valid_data.copy()
+                del incomplete_data[field]
+                
+                response = self.client.post(self.url, data=incomplete_data)
+                
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(response.context['is_success'])
+                self.assertIn(field, response.context['form'].errors)
+            
+                error_msg = str(response.context['form'].errors[field])
+                self.assertIn('обязател', error_msg.lower())
 
 
 class AuthViewTests(TestCase):
@@ -838,6 +843,7 @@ class ResetCategoryProgressViewTests(TestCase):
         response = self.client.get(
             reverse('reset_category_progress', args=[self.category.id])
         )
+
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse('login'), response.url)
 
@@ -1564,7 +1570,6 @@ class AddWordToCategoryViewTests(TestCase):
         }
         
         response = self.client.post(self.url, data)
-        
         self.assertRedirects(response, reverse('categories_wordlist', args=[self.category_user.id]))
         
         word = Word.objects.get(word='dog')
@@ -1930,3 +1935,996 @@ class AddWordToCategoryViewTests(TestCase):
                 word=self.word_other
             ).exists()
         )
+
+
+class WordEditViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='123',
+            email='test@test.ru'
+        )
+        self.other_user = User.objects.create_user(
+            username='otheruser',
+            password='123',
+            email='other@other.ru'
+        )
+        
+        self.category_user = Category.objects.create(
+            name='User Category',
+            owner=self.user
+        )
+        self.category_common = Category.objects.create(
+            name='Common Category',
+            owner=None
+        )
+        self.category_other = Category.objects.create(
+            name='Other Category',
+            owner=self.other_user
+        )
+        
+        self.word_user = Word.objects.create(
+            word='apple',
+            translation='яблоко',
+            transcription='ˈæp.əl'
+        )
+        self.word_user.category.add(self.category_user)
+        
+        self.word_common = Word.objects.create(
+            word='book',
+            translation='книга',
+            transcription='bʊk'
+        )
+        self.word_common.category.add(self.category_common)
+        
+        self.word_other = Word.objects.create(
+            word='table',
+            translation='стол',
+            transcription='ˈteɪbəl'
+        )
+        self.word_other.category.add(self.category_other)
+        
+        self.url = reverse('word_edit', args=[self.category_user.id, self.word_user.id])
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный пользователь получает 302"""
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 302)
+
+    def test_foreign_category_access_denied(self):
+        """Попытка редактирования в чужой категории возвращает 404"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(
+            reverse('word_edit', args=[self.category_other.id, self.word_other.id])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_foreign_word_access_denied(self):
+        """Попытка редактирования чужого слова"""
+        self.word_user.category.add(self.category_other)
+        
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(
+                reverse('word_edit', args=[self.category_other.id, self.word_user.id])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_get_request_renders_form(self):
+        """GET-запрос возвращает форму с текущими данными слова"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'web/edit_word.html')
+        self.assertIsInstance(response.context['form'], EditWordForm)
+        self.assertEqual(response.context['form'].initial['word'], 'apple')
+        self.assertEqual(response.context['word'], self.word_user)
+
+    def test_edit_translation_success(self):
+        """Успешное редактирование слова (перевод)"""
+        self.client.login(username='testuser', password='123')
+        data = {
+            'word': 'apple',
+            'translation': 'яблочко',
+            'transcription': 'æpl'
+        }
+        
+        response = self.client.post(self.url, data)
+        
+        self.word_user.refresh_from_db()
+        self.assertRedirects(response, 
+            reverse('categories_wordlist', args=[self.category_user.id]))
+        self.assertEqual(self.word_user.translation, 'яблочко')
+        self.assertEqual(self.word_user.transcription, 'æpl')
+  
+        messages_list = list(messages.get_messages(response.wsgi_request))
+        self.assertEqual(str(messages_list[0]), 'Слово успешно обновлено')
+
+    def test_edit_transcription_success(self):
+        """Успешное редактирование слова (транскрипция)"""
+        self.client.login(username='testuser', password='123')
+        data = {
+            'word': 'apple',
+            'translation': 'яблочко',
+            'transcription': 'æpll'
+        }
+        
+        response = self.client.post(self.url, data)
+        
+        self.word_user.refresh_from_db()
+        self.assertRedirects(response, 
+            reverse('categories_wordlist', args=[self.category_user.id]))
+        self.assertEqual(self.word_user.transcription, 'æpll')
+  
+        messages_list = list(messages.get_messages(response.wsgi_request))
+        self.assertEqual(str(messages_list[0]), 'Слово успешно обновлено')
+
+    def test_edit_without_transcription(self):
+        """Успешное редактирование слова (транскрипция)"""
+        self.client.login(username='testuser', password='123')
+        data = {
+            'word': 'apple',
+            'translation': 'яблочко',
+            'transcription': ''
+        }
+        
+        response = self.client.post(self.url, data)
+        
+        self.word_user.refresh_from_db()
+        self.assertRedirects(response, 
+            reverse('categories_wordlist', args=[self.category_user.id]))
+        self.assertEqual(self.word_user.transcription, '')
+  
+        messages_list = list(messages.get_messages(response.wsgi_request))
+        self.assertEqual(str(messages_list[0]), 'Слово успешно обновлено')
+
+    def test_form_validation_empty_fields(self):
+        """Проверка валидации формы редактирования (пустые поля)"""
+        self.client.login(username='testuser', password='123')
+        
+        # Пустые обязательные поля
+        response = self.client.post(self.url, {
+            'word': '',
+            'translation': '',
+            'transcription': ''
+        })
+        form = response.context['form']
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(form.errors['word'], ['Это поле обязательно для заполнения'])
+        self.assertEqual(form.errors['translation'], ['Это поле обязательно для заполнения'])
+        
+    def test_form_validation_empty_fields(self):
+        """Проверка валидации формы редактирования (слишком длинные значения)"""
+        self.client.login(username='testuser', password='123')
+        
+        long_str = 'a' * 51
+        response = self.client.post(self.url, {
+            'word': long_str,
+            'translation': long_str,
+            'transcription': long_str
+        })
+        form = response.context['form']
+        
+        self.assertEqual(form.errors['word'], ['Максимальная длина английского слова - 50 символов'])
+        self.assertEqual(form.errors['translation'], ['Максимальная длина перевода - 50 символов'])
+        self.assertEqual(form.errors['transcription'], ['Максимальная длина транскрипции - 50 символов'])
+
+    def test_form_validation_whitespace(self):
+        """Успешное редактирование слова (транскрипция)"""
+        self.client.login(username='testuser', password='123')
+        data = {
+            'word': ' apple  ',
+            'translation': ' яблочко  ',
+            'transcription': ' æpll '
+        }
+        
+        response = self.client.post(self.url, data)
+        
+        self.word_user.refresh_from_db()
+        self.assertRedirects(response, 
+            reverse('categories_wordlist', args=[self.category_user.id]))
+        self.assertEqual(self.word_user.transcription, 'æpll')
+  
+        messages_list = list(messages.get_messages(response.wsgi_request))
+        self.assertEqual(str(messages_list[0]), 'Слово успешно обновлено')
+
+    def test_edit_word_duplicate_in_same_category(self):
+        """Попытка создать дубликат в той же категории"""
+        Word.objects.create(
+            word='apple2',
+            translation='яблоко2',
+            transcription='æpl2'
+        ).category.add(self.category_user)
+        
+        self.client.login(username='testuser', password='123')
+        data = {
+            'word': 'apple2',
+            'translation': 'яблоко2',
+            'transcription': 'æpl2'
+        }
+        
+        response = self.client.post(self.url, data)
+        form = response.context['form']
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(form.errors['word'], ['Такое слово уже существует в этой категории'])
+
+    def test_merge_with_exact_duplicate(self):
+        """Объединение с точным дубликатом из другой категории"""
+        duplicate = Word.objects.create(
+            word='apple2',
+            translation='яблоко2',
+            transcription='ˈæp.əl2'
+        )
+        duplicate.category.add(self.category_common)
+
+        Word_Repetition.objects.create(user=self.user, word=self.word_user)
+        Learned_Word.objects.create(user=self.user, word=self.word_user)
+
+        self.client.login(username='testuser', password='123')
+        data = {
+            'word': 'apple2',
+            'translation': 'яблоко2',
+            'transcription': 'ˈæp.əl2'
+        }
+
+        response = self.client.post(self.url, data)
+
+        self.assertRedirects(response, 
+            reverse('categories_wordlist', args=[self.category_user.id])
+        )
+        self.assertTrue(Word_Repetition.objects.filter(
+            user=self.user, 
+            word=duplicate
+        ).exists())
+        self.assertTrue(Learned_Word.objects.filter(
+            user=self.user, 
+            word=duplicate
+        ).exists())
+        self.assertFalse(self.word_user.category.filter(id=self.category_user.id).exists())
+        
+        messages_list = list(messages.get_messages(response.wsgi_request))
+        self.assertEqual(str(messages_list[0]), 'Слово объединено с существующим дубликатом')
+
+    def test_create_new_version_for_shared_word(self):
+        """Создание новой версии слова, которое используется в других категориях"""
+        other_category = Category.objects.create(name='Other User Category', owner=self.user)
+        self.word_user.category.add(other_category)
+        
+        Word_Repetition.objects.create(user=self.user, word=self.word_user)
+        Learned_Word.objects.create(user=self.user, word=self.word_user)
+
+        self.client.login(username='testuser', password='123')
+        data = {
+            'word': 'apple_new',
+            'translation': 'новое яблоко',
+            'transcription': 'njuː æpl'
+        }
+        
+        response = self.client.post(self.url, data)
+        
+        self.assertRedirects(response, 
+            reverse('categories_wordlist', args=[self.category_user.id])
+        )
+        
+        new_word = Word.objects.get(word='apple_new')
+        self.assertTrue(new_word.category.filter(id=self.category_user.id).exists())
+        
+        self.assertTrue(self.word_user.category.filter(id=other_category.id).exists())
+        self.assertFalse(self.word_user.category.filter(id=self.category_user.id).exists())
+
+        messages_list = list(messages.get_messages(response.wsgi_request))
+        self.assertEqual(str(messages_list[0]), 'Создана новая версия слова для этой категории')
+
+    def test_edit_word_from_common_category_with_other_users(self):
+        """Обновление слова из общей категории на слово с совпадающими полями"""
+        
+        self.word_common.category.add(self.category_other)
+        Word_Repetition.objects.create(
+            user=self.other_user,
+            word=self.word_common,
+            repetition_count=3
+        )
+
+        self.client.login(username='testuser', password='123')
+        edit_url = reverse('word_edit', args=[self.category_common.id, self.word_common.id])
+        response = self.client.post(edit_url, {
+            'word': 'updated_common',
+            'translation': 'обновленное общее',
+            'transcription': 'ʌpˈdeɪtɪd ˈkɒmən'
+        })
+        
+        self.assertRedirects(response, reverse('categories_wordlist', args=[self.category_common.id]))
+        
+        new_word = Word.objects.get(word='updated_common')
+        self.assertTrue(new_word.category.filter(id=self.category_common.id).exists())
+        
+        self.assertTrue(self.word_common.category.filter(id=self.category_other.id).exists())
+        self.assertEqual(
+            Word_Repetition.objects.get(user=self.other_user, word=self.word_common).repetition_count,
+            3
+        )
+
+        self.assertEqual(Word.objects.filter(word__in=['common_word', 'updated_common']).count(), 2)
+
+    def test_edit_word_from_foreign_category_with_exact_match(self):
+        """Обновление слова из чужой категории на слово с совпадающими полями"""
+        Word_Repetition.objects.create(
+            word=self.word_other,
+            user=self.other_user
+        )
+        Learned_Word.objects.create(
+            word=self.word_other,
+            user=self.other_user
+        )
+
+        self.client.login(username='testuser', password='123')
+        edit_url = reverse('word_edit', args=[self.category_user.id, self.word_user.id])
+        
+        response = self.client.post(edit_url, {
+            'word': 'table',
+            'translation': 'стол',
+            'transcription': 'ˈteɪbəl'
+        })
+        self.assertRedirects(response, reverse('categories_wordlist', args=[self.category_user.id]))
+        
+        self.assertEqual(Word.objects.filter(word='table').count(), 1)
+        
+        word = Word.objects.get(word='table')
+        self.assertTrue(
+            Word_Repetition.objects.filter(user=self.other_user, word=word).exists()
+        )
+        self.assertTrue(
+            Learned_Word.objects.filter(user=self.other_user, word=word).exists()
+        )
+        self.assertTrue(
+            Word_Repetition.objects.filter(user=self.user, word=word).exists()
+        )
+        self.assertTrue(
+            Learned_Word.objects.filter(user=self.user, word=word).exists()
+        )
+
+    def test_edit_word_from_common_category_with_other_users(self):
+        """Обновление слова из общей категории"""
+        self.word_common.category.add(self.category_user)
+        Word_Repetition.objects.create(
+            user=self.other_user,
+            word=self.word_common,
+            repetition_count=3
+        )
+        self.assertEqual(Word.objects.filter(word='book').count(), 1)
+        
+        self.client.login(username='testuser', password='123')
+        edit_url = reverse('word_edit', args=[self.category_user.id, self.word_common.id])
+        response = self.client.post(edit_url, {
+            'word': 'book',
+            'translation': 'другая книжка',
+            'transcription': 'buk'
+        })
+        
+        self.assertRedirects(response, reverse('categories_wordlist', args=[self.category_user.id]))
+        
+        old_word = Word.objects.get(word='book', translation='книга')
+        new_word = Word.objects.get(word='book', translation='другая книжка')
+        self.assertTrue(old_word.category.filter(id=self.category_common.id).exists())
+        self.assertTrue(new_word.category.filter(id=self.category_user.id).exists())
+        self.assertFalse(new_word.category.filter(id=self.category_common.id).exists())
+        self.assertFalse(old_word.category.filter(id=self.category_user.id).exists())
+        
+        self.assertEqual(
+            Word_Repetition.objects.get(user=self.other_user, word=self.word_common).repetition_count,
+            3
+        )
+        self.assertEqual(Word.objects.filter(word='book').count(), 2)
+        self.assertEqual(Word.objects.filter(translation__in=['другая книжка', 'книга']).count(), 2)
+
+    def test_edit_word_from_foreign_category_with_exact_match(self):
+        """Обновление слова из чужой категории с совпадающими полями создает новую версию"""
+        self.client.login(username='testuser', password='123')
+        edit_url = reverse('word_edit', args=[self.category_user.id, self.word_user.id])
+        response = self.client.post(edit_url, {
+            'word': 'table',
+            'translation': 'другой стол',
+            'transcription': 'taibl'
+        })
+
+        self.assertRedirects(response, reverse('categories_wordlist', args=[self.category_user.id]))
+        self.assertEqual(Word.objects.filter(word='table').count(), 2)
+        
+        user_word = Word.objects.filter(
+            word='table',
+            category=self.category_user
+        ).first()
+        self.assertIsNotNone(user_word)
+        self.assertNotEqual(user_word.id, self.word_other.id)
+        
+        self.assertTrue(self.word_other.category.filter(id=self.category_other.id).exists())
+
+
+class WordDeleteViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='123',
+            email='test@test.ru'
+        )
+        self.other_user = User.objects.create_user(
+            username='otheruser',
+            password='123',
+            email='other@other.ru'
+        )
+        
+        self.user_category = Category.objects.create(
+            name='User Category',
+            owner=self.user
+        )
+        self.user_category2 = Category.objects.create(
+            name='User Category 2',
+            owner=self.user
+        )
+        self.common_category = Category.objects.create(
+            name='Common Category',
+            owner=None
+        )
+        self.other_category = Category.objects.create(
+            name='Other Category',
+            owner=self.other_user
+        )
+
+        self.word_user = Word.objects.create(
+            word='user_only',
+            translation='только пользователя',
+            transcription='ˈjuːzər ˈəʊnli'
+        )
+        self.word_user.category.add(self.user_category)
+        
+        self.word_common= Word.objects.create(
+            word='shared',
+            translation='разделяемое',
+            transcription='ˈʃeəd'
+        )
+        self.word_common.category.add(self.user_category)
+        self.word_common.category.add(self.other_category)
+        
+        self.word_foreign = Word.objects.create(
+            word='foreign',
+            translation='чужое',
+            transcription='ˈfɒrɪn'
+        )
+        self.word_foreign.category.add(self.other_category)
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный пользователь получает 302"""
+        response = self.client.post(reverse('word_delete', args=[self.user_category.id, self.word_user.id]))
+        self.assertEqual(response.status_code, 302)
+
+    def test_delete_word_from_own_category(self):
+        """Удаление слова, которое только в одной категории одного пользователя"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(reverse('word_delete', args=[self.user_category.id, self.word_user.id]))
+        
+        data = response.json()
+       #self.assertEqual(response.status_code, 200)
+       # self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['message'], 'Слово полностью удалено')
+        self.assertFalse(Word.objects.filter(word=self.word_user).exists())
+
+    def test_delete_word_from_own_category_that_is_in_other_own_category(self):
+        """Удаление слова, которое в нескольких категориях одного пользователя"""
+        self.word_user.category.add(self.user_category2)
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.word_user
+        )
+        Learned_Word.objects.create(
+            user=self.user,
+            word=self.word_user
+        )
+
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(reverse('word_delete', args=[self.user_category.id, self.word_user.id]))
+        
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['message'], 'Слово удалено из категории')
+        self.assertFalse(Word.objects.filter(word=self.word_user).exists())
+
+        self.assertTrue(
+            Word_Repetition.objects.filter(
+                user=self.user,
+                word=self.word_user
+            ).exists()
+        )
+        self.assertTrue(
+            Learned_Word.objects.filter(
+                user=self.user,
+                word=self.word_user
+            ).exists()
+        )
+
+    def test_delete_word_from_shared_category(self):
+        """Удаление слова, которое есть и в других категориях"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(reverse('word_delete', args=[self.user_category.id, self.word_common.id]))
+        
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['message'], 'Слово удалено из категории')
+        
+        self.word_common.refresh_from_db()
+        self.assertTrue(self.word_common.category.filter(id=self.other_category.id).exists())
+        self.assertFalse(self.word_common.category.filter(id=self.user_category.id).exists())
+
+    def test_delete_word_from_common_category(self):
+        """Удаление слова из общей категории"""
+        self.word_common.category.add(self.common_category)
+        self.word_common.category.add(self.user_category)
+        
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(
+            reverse('word_delete', args=[self.user_category.id, self.word_common.id])
+        )
+        
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['message'], 'Слово удалено из категории')
+        
+        self.word_common.refresh_from_db()
+        self.assertTrue(self.word_common.category.filter(id=self.common_category.id).exists())
+        self.assertFalse(self.word_common.category.filter(id=self.user_category.id).exists())
+
+    def test_delete_foreign_word(self):
+        """Попытка удалить чужое слово"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(
+            reverse('word_delete', args=[self.other_category.id, self.word_foreign.id])
+        )
+        
+        data = response.json()
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(data['status'], 'error')
+        self.assertEqual(data['message'], 'Категория или слово не найдены')
+        self.assertTrue(Word.objects.filter(id=self.word_foreign.id).exists())
+
+    def test_delete_word_with_progress(self):
+        """Удаление слова с прогрессом обучения"""
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.word_user,
+            repetition_count=5
+        )
+        Learned_Word.objects.create(
+            user=self.user,
+            word=self.word_user
+        )
+        
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(reverse('word_delete', args=[self.user_category.id, self.word_user.id]))
+        
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['status'], 'success')
+        
+        self.assertFalse(
+            Word_Repetition.objects.filter(
+                user=self.user,
+                word=self.word_user
+            ).exists()
+        )
+        self.assertFalse(
+            Learned_Word.objects.filter(
+                user=self.user,
+                word=self.word_user
+            ).exists()
+        )
+
+    def test_delete_nonexistent_word(self):
+        """Попытка удалить несуществующее слово в существующей категории"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(reverse('word_delete', args=[self.user_category.id, 9999]))
+        
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_nonexistent_category(self):
+        """Попытка удалить слово в несуществующей категории"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(reverse('word_delete', args=[9999, self.word_user.id]))
+        
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_word_not_in_specified_category(self):
+        """Попытка удаления слова, которого нет в указанной категории, но слово существует у пользователя"""
+        self.client.login(username='testuser', password='123')
+        
+        new_word = Word.objects.create(
+            word='new_word',
+            translation='новое слово',
+            transcription='njuː wɜːd'
+        )
+        new_word.category.add(self.user_category2)
+        
+        response = self.client.post(
+            reverse('word_delete', args=[self.user_category.id, new_word.id])
+        )
+        
+        data = response.json()
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(data['status'], 'error')
+        self.assertEqual(data['message'], 'Слово не найдено в указанной категории')
+        
+        self.assertTrue(Word.objects.filter(id=new_word.id).exists())
+        self.assertTrue(new_word.category.filter(id=self.user_category2.id).exists())
+
+
+class AddCategoryViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='123')
+        self.other_user = User.objects.create_user(username='otheruser', password='123')
+        self.client = Client()
+        self.url = reverse('add_category')
+
+        file_content = "apple;яблоко;ˈæp.əl\nbanana;банан;bəˈnɑːnə"
+        self.valid_file = SimpleUploadedFile(
+            "test_words.txt",
+            file_content.encode('utf-8'),
+            content_type='text/plain'
+        )
+
+    def tearDown(self):
+        shutil.rmtree(
+            os.path.abspath(os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media', 'tmp')),            
+            ignore_errors=True
+        )
+
+    def test_valid_form(self):
+        """Валидная форма"""
+        self.client.login(username='testuser', password='123')
+        form_data = {
+            'name': 'Новая категория',
+            'description': 'Описание'
+        }
+        form = AddCategoryForm(
+            data=form_data, 
+            files={'word_file': self.valid_file},
+            user=self.user
+        )
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data['name'], 'Новая категория')
+        self.assertEqual(form.cleaned_data['description'], 'Описание')
+
+    def test_unique_name_validation(self):
+        """Категория с существующим именем"""
+        Category.objects.create(name='Существующая', owner=self.user)
+        
+        form = AddCategoryForm(
+            data={'name': 'Существующая', 'description': ''},
+            files={'word_file': self.valid_file},
+            user=self.user
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            form.errors['name'][0],
+            "У вас уже есть категория с таким названием."
+        )
+        self.assertIn('name', form.errors, "Ошибка должна быть в поле name")
+
+    def test_missing_required_fields(self):
+        """Отсутствия обязательных полей"""
+        self.client.login(username='testuser', password='123')
+        form = AddCategoryForm(
+            data={'description': 'Только описание'}, 
+            files={'word_file': self.valid_file},
+            user=self.user
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn('name', form.errors, "Должна быть ошибка о необходимости имени")
+        self.assertEqual(
+                form.errors['name'][0],
+                "Обязательное поле.",
+                msg="Текст ошибки должен быть 'Обязательное поле.'"
+            )
+
+        form = AddCategoryForm(data={'name': 'Без файла', 'description': ''})
+        self.assertFalse(form.is_valid())
+        self.assertIn('word_file', form.errors, "Должна быть ошибка о необходимости файла")
+        self.assertEqual(
+            form.errors['word_file'][0],
+            "Обязательное поле.",
+            msg="Текст ошибки должен быть 'Обязательное поле.'"
+        )
+
+    def test_whitespace_handling(self):
+        """Проверка обработки пробелов в значениях"""
+        self.client.login(username='testuser', password='123')
+        
+        form = AddCategoryForm(
+            data={
+                'name': '  Категория с пробелами  ', 
+                'description': '  Описание  '
+            },
+            files={'word_file': self.valid_file},
+            user=self.user
+        )
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data['name'], 'Категория с пробелами', "Пробелы должны быть удалены")
+        self.assertEqual(form.cleaned_data['description'], 'Описание', "Пробелы должны быть удалены")
+        
+        
+    def test_empty_field_handling(self):
+        """Проверка пустых значений"""
+        self.client.login(username='testuser', password='123')
+
+        form = AddCategoryForm(
+            data={'name': '   ', 'description': ' '},
+            files={'word_file': self.valid_file},
+            user=self.user
+        )
+        self.assertFalse(form.is_valid(), "Форма должна быть невалидной")
+        self.assertEqual(
+            form.errors['name'][0],
+            "Обязательное поле.",
+            msg="Должна быть ошибка о необходимости имени"
+        )
+
+
+    def test_add_category_get(self):
+        """Тест GET запроса к странице добавления категории"""
+        self.client.login(username='testuser', password='123')
+
+        response = self.client.get(reverse('add_category'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'web/add_category.html')
+        self.assertIsInstance(response.context['form'], AddCategoryForm)
+
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def test_add_category_success(self):
+        """Успешное добавление категории с файлом"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(reverse('add_category'), {
+            'name': 'Test Category',
+            'description': 'Test description',
+            'word_file': self.valid_file
+        })
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('categories'))
+        
+        category = Category.objects.filter(name='Test Category', owner=self.user).first()
+        self.assertIsNotNone(category)
+
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def test_duplicate_category_name(self):
+        """Дублирование имени категории"""
+        self.client.login(username='testuser', password='123')
+        Category.objects.create(name='Duplicate', owner=self.user)
+        
+        response = self.client.post(self.url, {
+            'name': 'Duplicate',
+            'description': '',
+            'word_file': self.valid_file
+        })
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.context['form'].is_valid())
+
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def test_create_category_with_common_name(self):
+        """Попытка создания категории с именем общей категории"""
+        Category.objects.create(name='Common', owner=None)
+        
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(reverse('add_category'), {
+            'name': 'Common',
+            'description': 'Попытка дублировать',
+            'word_file': self.valid_file
+        })
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('Категория с таким названием уже существует как общая.', 
+                    response.context['form'].errors['name'][0])
+        
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def test_can_create_same_name_for_different_users(self):
+        """Разные пользователи могут иметь категории с одинаковыми именами"""
+        Category.objects.create(
+            name='Test Category',
+            owner=self.other_user,
+            description='Чужая категория'
+        )
+        
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(reverse('add_category'), {
+            'name': 'Test Category',
+            'description': 'Моя категория',
+            'word_file': self.valid_file
+        })
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Category.objects.filter(name='Test Category').count(), 2)
+
+    def test_unauthenticated_access(self):
+        """Доступ без авторизации"""
+        response = self.client.get(self.url)
+        self.assertIn(reverse('login'), response.url)
+
+
+
+class RemoveCategoryViewTests(TestCase):
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='123')
+        self.other_user = User.objects.create_user(username='otheruser', password='123')
+        self.client.login(username='testuser', password='123')
+
+        self.category = Category.objects.create(
+            name='Test Category',
+            owner=self.user,
+            description='Test Description'
+        )
+        self.category2 = Category.objects.create(
+            name='Test Category 2',
+            owner=self.user,
+            description='Test Description'
+        )
+        self.common_category = Category.objects.create(
+            name='Common Category',
+            owner=None,
+            description='Common Description'
+        )
+
+        self.other_category = Category.objects.create(
+            name='Other Category',
+            owner=self.other_user,
+            description='Other Description'
+        )
+        self.word_user = Word.objects.create(
+            word='user word',
+            translation='user word translation',
+            transcription='user word translation',
+        )
+        self.word_common = Word.objects.create(
+            word='common word',
+            translation='common word translation',
+            transcription='common word translation',
+        )
+        self.word_other = Word.objects.create(
+            word='other word',
+            translation='other word translation',
+            transcription='other word translation',
+        )
+        self.word_multiuser = Word.objects.create(
+            word='multiuser word',
+            translation='multiuser word translation',
+            transcription='multiuser word translation',
+        )
+
+        self.upload_path = os.path.join('tmp', str(self.user.id), 'Test Category.txt')
+        default_storage.save(self.upload_path, ContentFile(b'test;test;test'))
+
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def test_remove_category_with_file(self):
+        """Удаление категории с существующим файлом"""
+        self.assertTrue(default_storage.exists(self.upload_path))
+        response = self.client.post(reverse('remove_category', args=[self.category.id]))
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('categories'))
+        self.assertFalse(Category.objects.filter(id=self.category.id).exists())
+        self.assertFalse(default_storage.exists(self.upload_path))
+
+    def test_remove_category_without_file(self):
+        """Удаление категории без файла"""
+        default_storage.delete(self.upload_path)
+        
+        response = self.client.post(reverse('remove_category', args=[self.category.id]))
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('categories'))
+        self.assertFalse(Category.objects.filter(id=self.category.id).exists())
+
+    def test_remove_nonexistent_category(self):
+        """Попытка удаления несуществующей категории"""
+        nonexistent_id = 9999
+        response = self.client.post(reverse('remove_category', args=[nonexistent_id]))
+        
+        self.assertEqual(response.status_code, 404)
+
+    def test_remove_other_user_category(self):
+        """Попытка удаления чужой категории"""
+        
+        response = self.client.post(reverse('remove_category', args=[self.other_category.id]))
+        
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Category.objects.filter(id=self.other_category.id).exists())
+
+    def test_remove_common_category(self):
+        """Попытка удаления чужой категории"""
+        
+        response = self.client.post(reverse('remove_category', args=[self.common_category.id]))
+        
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Category.objects.filter(id=self.common_category.id).exists())
+
+
+    def test_remove_category_unauthenticated(self):
+        """Попытка удаления без авторизации"""
+        self.client.logout()
+        response = self.client.post(reverse('remove_category', args=[self.category.id]))
+        
+        self.assertEqual(response.status_code, 302) 
+        self.assertTrue(response.url.startswith(reverse('login')))
+
+    def test_remove_category_get_request(self):
+        """GET запрос вместо POST"""
+        response = self.client.get(reverse('remove_category', args=[self.category.id]))
+        self.assertEqual(response.status_code, 302)
+
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def test_remove_category_file_deletion_error(self):
+        """Ошибка при удалении файла"""
+
+        self.assertTrue(default_storage.exists(self.upload_path))
+        
+        with patch('django.core.files.storage.default_storage.delete') as mock_delete:
+            mock_delete.side_effect = Exception("Simulated deletion error")
+            
+            response = self.client.post(reverse('remove_category', args=[self.category.id]))
+            
+            self.assertEqual(response.status_code, 302)
+            self.assertFalse(Category.objects.filter(id=self.category.id).exists())
+
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def test_remove_category_same_word_as_common_category_has(self):
+        """Удаление категории со словом, которое есть в общей категории"""
+        
+        self.word_user.category.add(self.category)
+        self.word_common.category.add(self.category)
+        self.word_common.category.add(self.common_category)
+
+        response = self.client.post(reverse('remove_category', args=[self.category.id]))
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('categories'))
+        self.assertFalse(Category.objects.filter(id=self.category.id).exists())
+
+        self.assertTrue(Word.objects.filter(id=self.word_common.id).exists())
+        self.assertFalse(Word.objects.filter(id=self.word_user.id).exists())
+
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def test_remove_category_same_word_as_other_user_has(self):
+        """Удаление категории со словом, которое есть в чужой категории"""
+        
+        self.word_user.category.add(self.category)
+        self.word_multiuser.category.add(self.category)
+        self.word_multiuser.category.add(self.other_category)
+        self.word_other.category.add(self.other_category)
+        response = self.client.post(reverse('remove_category', args=[self.category.id]))
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('categories'))
+        self.assertFalse(Category.objects.filter(id=self.category.id).exists())
+
+        self.assertTrue(Word.objects.filter(id=self.word_multiuser.id).exists())
+        self.assertFalse(Word.objects.filter(id=self.word_user.id).exists())
+
+    @override_settings(MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'web', 'tests', 'test_media'))
+    def test_remove_category_same_word_in_other_user_category(self):
+        """Удаление категории со словом, которое есть в другой категории пользователя"""
+        
+        self.word_user.category.add(self.category)
+        self.word_user.category.add(self.category2)
+        response = self.client.post(reverse('remove_category', args=[self.category.id]))
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('categories'))
+        self.assertFalse(Category.objects.filter(id=self.category.id).exists())
+
+        self.assertTrue(Word.objects.filter(id=self.word_user.id).exists())
+

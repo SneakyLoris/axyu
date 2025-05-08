@@ -11,7 +11,7 @@ User = get_user_model()
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50)
     description = models.TextField(blank=True)
     owner = models.ForeignKey('auth.User', on_delete=models.CASCADE, null=True, blank=True, default=None)
 
