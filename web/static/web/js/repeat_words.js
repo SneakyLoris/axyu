@@ -54,15 +54,22 @@ btnKnow.addEventListener('click', function() {
     sendRepeatResult(true);
     translation.style.display = 'none';
     transcription.style.display = 'none';
-    loadWordForRepeat();
-
+    btnKnow.disabled = true;
+    setTimeout(() => {
+        loadWordForRepeat(),
+        btnKnow.disabled = false;
+    }, 200);
 });
 
 btnDontKnow.addEventListener('click', function() {
     sendRepeatResult(false);
     translation.style.display = 'none';
     transcription.style.display = 'none';
-    loadWordForRepeat();
+    btnDontKnow.disabled = true;
+    setTimeout(() => {
+        loadWordForRepeat(),
+        btnDontKnow.disabled = false;
+    }, 200);
 });
 
 btnShowTranslation.addEventListener('click', function() {
