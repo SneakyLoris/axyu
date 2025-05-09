@@ -61,7 +61,7 @@ class Answer_Attempt(models.Model):
 class Word_Repetition(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     word = models.ForeignKey(Word, on_delete=models.CASCADE)
-    next_review = models.DateTimeField(default=timezone.now() + timedelta(seconds=30))
+    next_review = models.DateTimeField(default=timezone.now() + timedelta(minutes=30))
     repetition_count = models.PositiveIntegerField(default=0)
 
     class Meta:

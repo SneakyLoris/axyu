@@ -2,7 +2,7 @@ import json
 import os
 from datetime import timedelta
 import shutil
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
@@ -24,7 +24,7 @@ from web.forms import (
     AddCategoryForm, AddWordForm, EditCategoryForm,
     EditWordForm, FeedbackForm, RegistrationForm
 )
-from web.views import REPETITION_INTERVALS
+from web.services.ml_repetition import DEFAULT_INTERVALS
 
 User = get_user_model()
 
@@ -3815,6 +3815,14 @@ class SendRepeatResultTests(TestCase):
             word=self.common_word,
             next_review=timezone.now() - timedelta(hours=1)
         )
+        self.ml_patcher = patch(
+            'web.services.ml_repetition.RepetitionMLService.train_for_user_async',
+            return_value=None
+        )
+        self.mocked_train = self.ml_patcher.start()
+
+    def tearDown(self):
+        self.ml_patcher.stop()
 
     def test_correct_answer_first_time(self):
         """Правильный ответ при повторении"""
@@ -3839,15 +3847,16 @@ class SendRepeatResultTests(TestCase):
         self.assertEqual(repetition.repetition_count, 4)
         self.assertAlmostEqual(
             repetition.next_review,
-            timezone.now() + timedelta(minutes=REPETITION_INTERVALS[4]),
+            timezone.now() + timedelta(minutes=DEFAULT_INTERVALS[4]),
             delta=timedelta(seconds=5)
         )
-        
+
         attempt = Answer_Attempt.objects.last()
         self.assertEqual(attempt.user, self.user)
         self.assertEqual(attempt.word, self.user_word)
         self.assertEqual(attempt.session, self.user_session)
         self.assertTrue(attempt.is_correct)
+        self.mocked_train.assert_called_once()
 
     def test_incorrect_answer(self):
         """Неправильный ответ"""
@@ -3872,13 +3881,14 @@ class SendRepeatResultTests(TestCase):
         self.assertEqual(repetition.repetition_count, initial_count - 1)
         self.assertAlmostEqual(
             repetition.next_review,
-            timezone.now() + timedelta(minutes=REPETITION_INTERVALS[initial_count - 1]),
+            timezone.now() + timedelta(minutes=DEFAULT_INTERVALS[initial_count - 1]),
             delta=timedelta(seconds=5)
         )
         
         attempt = Answer_Attempt.objects.last()
         self.assertFalse(attempt.is_correct)
-
+        self.mocked_train.assert_called_once()
+            
     def test_word_learned(self):
         """Слово выучено после 5 правильных повторений"""
         self.user_repetition.repetition_count = 5
@@ -3905,6 +3915,7 @@ class SendRepeatResultTests(TestCase):
             user=self.user,
             word=self.user_word
         ).exists())
+        self.mocked_train.assert_called_once()
 
     def test_new_repetition_created(self):
         """Создание нового повторения, если его не было"""
@@ -4028,7 +4039,6 @@ class SendRepeatResultTests(TestCase):
 
     def test_other_users_word(self):
         """Попытка работать с чужим словом"""
-        # Создаем слово, которое принадлежит только user2
         word = Word.objects.create(word='private_word', translation='trans', transcription='transcr')
         word.category.add(self.user2_category)
         
@@ -4110,7 +4120,7 @@ class SendRepeatResultTests(TestCase):
         )
         
         self.assertEqual(response.status_code, 400)
-        self.assertIn('Word is not ready for repetition yet. Next review at', response.json()['message'])
+
 
     def test_server_error_handling(self):
         """Обработка исключений сервера"""

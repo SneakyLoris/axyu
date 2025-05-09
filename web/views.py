@@ -31,9 +31,9 @@ from web.models import (
     Answer_Attempt, Category, Learned_Word, Learning_Category, 
     Learning_Session, User, Word, Word_Repetition,
 )
+from web.services.ml_repetition import ml_service
 
 
-REPETITION_INTERVALS = {0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
 LEARNING_METHODS = {
     'new_words': 'new_words',
     'repeat': 'repeat',
@@ -971,7 +971,7 @@ def send_repeat_result(request):
 
         try:
             repetition = Word_Repetition.objects.get(user=user, word_id=word_id)
-            if repetition.next_review >= now:
+            if repetition.next_review > now:
                 return JsonResponse({
                     'status': 'error',
                     'message': f'Word is not ready for repetition yet. Next review at {repetition.next_review}'
@@ -980,7 +980,7 @@ def send_repeat_result(request):
             repetition = Word_Repetition.objects.create(
                 user=user,
                 word_id=word_id,
-                next_review=now + timedelta(minutes=REPETITION_INTERVALS[0])
+                next_review=now + timedelta(minutes=ml_service.get_initial_interval())
             )
 
         Answer_Attempt.objects.create(
@@ -997,19 +997,19 @@ def send_repeat_result(request):
                 message = 'Word learned!'
             else:
                 repetition.repetition_count += 1
-                repetition.next_review = now + timedelta(
-                    minutes=REPETITION_INTERVALS.get(repetition.repetition_count, 0)
-                )
+                interval = ml_service.predict_next_interval(user, word, repetition.repetition_count)
+                repetition.next_review = now + timedelta(minutes=interval)
                 repetition.save()
                 message = 'Repetition updated'
         else:
             repetition.repetition_count = max(0, repetition.repetition_count - 1)
-            repetition.next_review = now + timedelta(
-                minutes=REPETITION_INTERVALS.get(repetition.repetition_count, 0)
-            )
+            interval = ml_service.predict_next_interval(user, word, repetition.repetition_count)
+            repetition.next_review = now + timedelta(minutes=interval)
             repetition.save()
             message = 'Word difficulty increased'
-                 
+
+        ml_service.train_for_user_async(user)        
+        
         return JsonResponse({'status': 'success', 'message': message}, status=200)
 
     except Exception as e:
