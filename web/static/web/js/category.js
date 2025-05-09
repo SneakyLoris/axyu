@@ -6,7 +6,7 @@ document.querySelectorAll('.category-checkbox').forEach(checkbox => {
         const categoryId = this.dataset.id;
         const isChecked = this.checked;
     
-        const response = await fetch('/api/update_user_categories/', {
+        const response = await fetch('/update_user_categories/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

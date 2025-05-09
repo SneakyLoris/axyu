@@ -12,7 +12,7 @@ let currentWordId = null;
 
 async function loadNewCard() {
     try {
-        const response = await fetch('/api/learning/get_new_word');
+        const response = await fetch('/learning/get_new_word/');
         const data = await response.json();
 
         if (data['status'] == 'success') {
@@ -33,7 +33,7 @@ async function loadNewCard() {
 loadNewCard();
 
 async function sendResult(isKnown) {
-    const response = await fetch('/api/learning/new_word_send_result', {
+    const response = await fetch('/learning/new_word_send_result/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

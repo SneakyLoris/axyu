@@ -8,6 +8,8 @@ DOCKER_DB_LOCAL_PORT=5432
 WORDLISTS_TRANSLATED_DIR=wordlists/translated
 TEST_MODULES=web.tests
 COMMAND_TO_OPEN_HTML=firefox
+USER_MEDIA=foreign_words/media/tmp/*
+TEST_MEDIA=web/tests/test_media/tmp/*
 
 makemigrations:
 	$(PYTHON) $(MANAGE) makemigrations
@@ -38,3 +40,5 @@ coverage:
 	
 clean:
 	rm -rf htmlcov
+	rm -rf $(TEST_MEDIA) 
+	rm -rf $(USER_MEDIA)

@@ -69,7 +69,7 @@ function resetSession() {
 
 function sendToServer(data) {
     return new Promise((resolve) => {
-        fetch('/api/track_session/',{
+        fetch('/track_session/',{
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -77,9 +77,16 @@ function addDivider(menu) {
 
 // Позиционирование меню
 function positionMenu(event, menu) {
-    const x = Math.min(event.pageX, window.innerWidth - menu.offsetWidth - 10);
-    const y = Math.min(event.pageY, window.innerHeight - menu.offsetHeight - 10);
-    
+    const scrollY = window.scrollY;
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    const maxX = viewportWidth - menu.offsetWidth - 10;
+    const maxY = scrollY + viewportHeight - menu.offsetHeight - 10;
+
+    const x = Math.min(event.pageX, maxX);
+    const y = Math.min(event.pageY, maxY);
+
     menu.style.display = 'block';
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
@@ -122,7 +129,11 @@ async function handleMenuClick(e, action) {
         }
 
         let response = await callDjangoView(config.url);
-    window.location.reload();
+        const currentUrl = window.location.href;
+        const baseUrl = currentUrl.split('?')[0];
+
+        sessionStorage.setItem('savedScrollPosition', window.scrollY);
+        window.location.href = baseUrl;
     } catch (error) {
         console.error('Ошибка:', error);
         alert('Произошла ошибка при выполнении операции');
@@ -169,4 +180,13 @@ document.addEventListener('DOMContentLoaded', function() {
             closeContextMenu();
         }
     });
+});
+
+
+window.addEventListener('load', () => {
+    const savedPosition = sessionStorage.getItem('savedScrollPosition');
+    if (savedPosition) {
+        window.scrollTo(0, parseInt(savedPosition));
+        sessionStorage.removeItem('savedScrollPosition'); // Очищаем сохранённое значение
+    }
 });

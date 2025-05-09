@@ -13,7 +13,7 @@ let currentWordId = null;
 
 async function loadWordForRepeat() {
     try {
-        const response = await fetch('/api/learning/get_word_repeat');
+        const response = await fetch('/learning/get_word_repeat/');
         const data = await response.json();
 
         if (data['status'] == 'success') {
@@ -35,7 +35,7 @@ async function loadWordForRepeat() {
 loadWordForRepeat();
 
 async function sendRepeatResult(remembered) {
-    const response = await fetch('/api/learning/send_repeat_result', {
+    const response = await fetch('/learning/send_repeat_result/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

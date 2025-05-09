@@ -29,4 +29,12 @@ urlpatterns = [
     path('words/reset_progress/<int:word_id>/', word_reset_progress, name='word_reset_progress'),
     path('words/edit/<int:category_id>/<int:word_id>/', word_edit, name='word_edit'),
     path('words/delete/<int:category_id>/<int:word_id>/', word_delete, name='word_delete'),
+    path('update_user_categories/', update_user_categories, name = 'update_user_categories'),
+    path('learning/new_word_send_result/', new_word_send_result, name = 'new_word_send_result'),
+    path('learning/get_new_word/', get_new_word, name = 'get_new_word'),
+    path('learning/get_word_repeat/', get_word_repeat, name = 'get_word_repeat'),
+    path('learning/send_repeat_result/', send_repeat_result, name = 'send_repeat_result'),
+    path('learning/get_test_questions/', get_test_questions, name = 'get_test_questions'),
+    path('search_words/', search_words, name='search_words'),
+    path('track_session/', track_session, name='track_session')
 ]

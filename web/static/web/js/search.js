@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
         try {
-            const response = await fetch(`/api/search_words/?q=${encodeURIComponent(query)}`);
+            const response = await fetch(`/search_words/?q=${encodeURIComponent(query)}`);
             const data = await response.json();
 
             if (data.results && data.results.length > 0) {
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const resultItem = document.createElement('div');
                     resultItem.className = 'search-result-item';
                     resultItem.innerHTML = `
-                        <a href="/categories/${encodeURIComponent(item.category_name)}?highlight=${encodeURIComponent(item.word)}&exact=true"
+                        <a href="/categories/${encodeURIComponent(item.category_id)}?highlight=${encodeURIComponent(item.word)}&exact=true"
                            data-exact="${isExactMatch}"
                            data-word="${item.word.toLowerCase()}">
                            ${item.word} /${item.transcription}/ ${item.translation} - ${item.category_name}

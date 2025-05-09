@@ -1,35 +1,54 @@
-import os
-from datetime import timedelta
-import random
 import json
-
-from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
-from django.core.exceptions import PermissionDenied
-from django.db import transaction
-from django.db.models.functions import  Coalesce, TruncDate, TruncTime, ExtractHour
-from django.db.models import Avg, Q, Case, Count, When, Value, Exists, OuterRef, CharField, Subquery
-from django.http import JsonResponse, Http404
-from django.shortcuts import render, redirect
-from django.db.models import Q, Case, When, Value, Exists, OuterRef, CharField
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-from django.core.management import call_command
-from django.conf import settings
-from django.utils import timezone
-from django.core.serializers.json import DjangoJSONEncoder
-from django.views.decorators.http import require_http_methods
-
 import os
+import random
+from datetime import timedelta
+from urllib.parse import parse_qs, urlparse
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.core.exceptions import PermissionDenied
+from django.core.files.storage import default_storage
+from django.core.management import call_command
+from django.db import transaction
+from django.db.models import (
+    Avg, Case, CharField, Count, Exists, OuterRef,
+    Q, Subquery, Value, When
+)
+from django.db.models.functions import Coalesce, ExtractHour, TruncDate
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 
 from psycopg2 import IntegrityError
 
-from api.models import User, Category, Word, Learning_Category, \
-    Learned_Word, Word_Repetition, Answer_Attempt, Learning_Session
-from foreign_words.settings import BASE_DIR
-from web.forms import RegistrationForm, AuthForm, FeedbackForm, AddCategoryForm, EditCategoryForm, AddWordForm, EditWordForm
+from web.forms import (
+    AddCategoryForm, AddWordForm, AuthForm, EditCategoryForm,
+    EditWordForm, FeedbackForm, RegistrationForm,
+)
+from web.models import (
+    Answer_Attempt, Category, Learned_Word, Learning_Category, 
+    Learning_Session, User, Word, Word_Repetition,
+)
+
+def auth_required(view_func=None, redirect_to_login=True):
+    def decorator(view_func):
+        def wrapper(request, *args, **kwargs):
+            if not request.user.is_authenticated:
+                if redirect_to_login:
+                    return redirect(settings.LOGIN_URL + '?next=' + request.path)
+                return JsonResponse(
+                    {'status': 'error', 'message': 'Authentication required'},
+                    status=403
+                )
+            return view_func(request, *args, **kwargs)
+        return wrapper
+
+    if view_func:
+        return decorator(view_func)
+    else:
+        return decorator
 
 
 def main_view(request):
@@ -87,20 +106,20 @@ def logout_view(request):
     logout(request)
     return redirect("main")
 
-@login_required
+@auth_required
 def learning_view(request):
     return render(request, "web/learning.html")
 
-@login_required
+@auth_required
 def learning_new_words_view(request):
     return render(request, "web/new_words.html")
 
-@login_required
+@auth_required
 def learning_repeat_view(request):
     return render(request, "web/repeat_words.html")
 
 
-@login_required
+@auth_required
 def learning_tests_view(request):
     categories = Category.objects.filter(
         Q(owner__isnull=True) | Q(owner_id=request.user.id)
@@ -131,7 +150,7 @@ def categories_view(request):
     })
 
 
-@login_required
+@auth_required
 def category_test(request):
     category_id = request.GET.get('category_id')
 
@@ -202,7 +221,7 @@ def categories_wordlist_view(request, category_id):
         "highlight_word": request.GET.get('highlight', ''),
     })
 
-@login_required
+@auth_required
 def remove_category_view(request, category_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
 
@@ -236,7 +255,7 @@ def feedback_view(request):
     return render(request, 'web/feedback.html', {'form': form})
 
 
-@login_required
+@auth_required
 def add_category_view(request):
     if request.method == 'POST':
         form = AddCategoryForm(request.POST, request.FILES, user=request.user)
@@ -284,7 +303,7 @@ def add_category_view(request):
     return render(request, 'web/add_category.html', {'form': form})
 
 
-@login_required
+@auth_required
 def edit_category_view(request, category_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
 
@@ -381,7 +400,7 @@ def stats_view(request):
     return render(request, 'web/stats.html', context)
 
 
-@login_required
+@auth_required
 def reset_category_progress_view(request, category_id):
     category = get_object_or_404(Category, id=category_id)
 
@@ -404,7 +423,7 @@ def reset_category_progress_view(request, category_id):
     return redirect('categories_wordlist', category_id=category.id)
 
 
-@login_required
+@auth_required
 def add_word_to_category_view(request, category_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
 
@@ -461,7 +480,7 @@ def add_word_to_category_view(request, category_id):
     })
 
 @require_http_methods(["POST"])
-@login_required
+@auth_required
 def word_start_learning(request, word_id):
     try:
         word = Word.objects.get(id=word_id)
@@ -483,7 +502,7 @@ def word_start_learning(request, word_id):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 @require_http_methods(["POST"])
-@login_required
+@auth_required
 def word_mark_known(request, word_id):
     try:
         word = Word.objects.get(id=word_id)
@@ -503,7 +522,7 @@ def word_mark_known(request, word_id):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 @require_http_methods(["POST"])
-@login_required
+@auth_required
 def word_reset_progress(request, word_id):
     try:
         word = Word.objects.get(id=word_id)
@@ -522,7 +541,7 @@ def word_reset_progress(request, word_id):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     
-@login_required
+@auth_required
 def word_edit(request, category_id, word_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
     word = get_object_or_404(Word, id=word_id)
@@ -591,7 +610,6 @@ def word_edit(request, category_id, word_id):
             except IntegrityError as e:
                 form.add_error(None, 'Ошибка базы данных при обновлении слова')
             except Exception as e:
-                print(e)
                 form.add_error(None, f'Неожиданная ошибка: {str(e)}')
     else:
         form = EditWordForm(initial={
@@ -606,7 +624,7 @@ def word_edit(request, category_id, word_id):
     })
 
 
-@login_required
+@auth_required
 def word_delete(request, category_id, word_id):
     try:
         category = get_object_or_404(Category, id=category_id, owner=request.user)
@@ -642,4 +660,470 @@ def word_delete(request, category_id, word_id):
             'status': 'error', 
             'message': f'Ошибка при удалении: {str(e)}'
         }, status=400)
+
+
+@require_http_methods(["POST"])
+@auth_required(redirect_to_login=False)
+def update_user_categories(request):
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        user = request.user
+        category = Category.objects.get(id=data['category_id'])
+
+        if category.owner not in [None, user]:
+            raise Category.DoesNotExist
+        
+        if data['is_checked']:
+            Learning_Category.objects.get_or_create(user=user, category=category)
+            message = f"Category '{category.name}' added"
+        else:
+            Learning_Category.objects.filter(user=user, category=category).delete()
+            message = f"Category '{category.name}' deleted"
+            
+        return JsonResponse({'status': 'success', 'message': message}, status=200)
     
+    except Category.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Category not found'}, status=404)
+    
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+
+@require_http_methods(["POST"])
+@auth_required(redirect_to_login=False)
+def new_word_send_result(request):
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        user = request.user
+        word_id = data.get('word_id')
+        is_known = data.get('is_known')
+
+        if None in (word_id, is_known):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Missing required fields'
+            }, status=400)
+
+        try:
+            word = Word.objects.get(id=word_id)
+        except Word.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Word not found'
+            }, status=404)
+        
+        if not word.category.filter(Q(owner__isnull=True) | Q(owner=user)):
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'No permission for this word'
+            }, status=403)
+
+        if is_known:
+            Learned_Word.objects.get_or_create(user=user, word_id=word_id)
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'Known word added'
+            }, status=200)
+    
+        Word_Repetition.objects.update_or_create(
+            user=user,
+            word_id=word_id,
+            defaults={'next_review': timezone.now() + timedelta(seconds=30)}
+        )
+        return JsonResponse({'status': 'success', 'message': 'Word to learned added'}, status=200)
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+     
+    
+@require_http_methods(["GET"])
+@auth_required(redirect_to_login=False)
+def get_new_word(request):
+    try:
+        user = request.user
+        user_categories = Learning_Category.objects.filter(user=user).values_list('category_id', flat=True)
+        
+        if not user_categories:
+            return JsonResponse({'status': 'error', 'message': 'No categories that user learns'}, status=200)
+
+        excluded_words = set(
+            Learned_Word.objects.filter(user=user).values_list('word_id', flat=True)
+        ).union(
+            Word_Repetition.objects.filter(user=user).values_list('word_id', flat=True)
+        )
+
+        new_words = Word.objects.filter(category__in=user_categories).exclude(id__in=excluded_words)
+
+        if not new_words.exists():
+            return JsonResponse({'status': 'error', 'message': 'No new words to learn'}, status=200)
+
+        word_obj = random.choice(new_words)
+        return JsonResponse({
+            'status': 'success',
+            'id': word_obj.id,
+            'word': word_obj.word,
+            'translation': word_obj.translation,
+            'transcription': word_obj.transcription
+        })
+    
+    except Exception as e: 
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+@auth_required(redirect_to_login=False)
+def get_word_repeat(request):
+    try:
+        user = request.user
+        now = timezone.now()
+
+        words_to_repeat = Word_Repetition.objects.filter(
+            user=user,
+            next_review__lte=now
+        )
+
+        if not words_to_repeat.exists():
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'No words to repeat'}
+                , status=200)
+        
+        words_ids = words_to_repeat.values_list('word_id', flat=True)
+        words_to_repeat = Word.objects.filter(
+            id__in=words_ids
+        )
+
+        word_to_repeat = random.choice(words_to_repeat)
+
+        return JsonResponse({
+            'status': 'success',
+            'id': word_to_repeat.id,
+            'word': word_to_repeat.word,
+            'translation': word_to_repeat.translation,
+            'transcription': word_to_repeat.transcription
+        })
+
+    except Exception as e: 
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+REPETITION_INTERVALS = {0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
+
+@require_http_methods(["POST"])
+@auth_required(redirect_to_login=False)
+def send_repeat_result(request):
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        user = request.user
+        word_id = data.get('word_id')
+        session_id = data.get('session_id')
+        is_known = data.get('is_known')
+        now = timezone.now()
+
+        if None in (word_id, session_id, is_known):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Missing required fields'
+            }, status=400)
+        
+        try:
+            session = Learning_Session.objects.get(id=session_id)
+            if session.user != user:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'This session does not belong to the current user'
+                }, status=403)
+        except Learning_Session.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Learning session not found'
+            }, status=404)
+
+        try:
+            word = Word.objects.get(id=word_id)
+
+            if not word.category.filter(Q(owner__isnull=True) | Q(owner=user)).exists():
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'No permission for this word'
+                }, status=403)
+        except Word.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Word not found'
+            }, status=404)
+
+        try:
+            repetition = Word_Repetition.objects.get(user=user, word_id=word_id)
+            if repetition.next_review > now:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Word is not ready for repetition yet. Next review at {repetition.next_review}'
+                }, status=400)
+        except Word_Repetition.DoesNotExist:
+            repetition = Word_Repetition.objects.create(
+                user=user,
+                word_id=word_id,
+                next_review=now + timedelta(minutes=REPETITION_INTERVALS[0])
+            )
+
+        Answer_Attempt.objects.create(
+            user=user,
+            word_id=word_id,
+            session_id=session_id,
+            is_correct=is_known
+        )
+
+        if is_known:
+            if repetition.repetition_count == 5:
+                repetition.delete()
+                Learned_Word.objects.create(
+                    user=user,
+                    word_id=word_id
+                )
+                message = 'Word learned!'
+            else:
+                repetition.repetition_count += 1
+                repetition.next_review = timezone.now() + timedelta(
+                    minutes=REPETITION_INTERVALS.get(repetition.repetition_count, 0)
+                )
+                repetition.save()
+                message = 'Repetition updated'
+        else:
+            repetition.repetition_count = max(0, repetition.repetition_count - 1)
+            repetition.next_review = timezone.now() + timedelta(
+                minutes=REPETITION_INTERVALS.get(repetition.repetition_count, 0)
+            )
+            repetition.save()
+            message = 'Word difficulty increased'
+                 
+        return JsonResponse({'status': 'success', 'message': message}, status=200)
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@require_http_methods(["GET"])
+@auth_required(redirect_to_login=False)
+def get_test_questions(request):
+    try:
+        user = request.user
+        category_id = request.GET.get('category_id')
+
+        if not category_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Category ID is required'
+            }, status=400)
+        
+        try:
+            category = Category.objects.get(id=category_id)
+            if category.owner and category.owner != user:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'No permission for this category'
+                }, status=403)
+        except Category.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Category not found'
+            }, status=404)
+
+        words = list(Word.objects.filter(
+            category__id=category_id
+        ).values('id', 'word', 'transcription', 'translation'))
+
+        if not words:
+            return JsonResponse({'status': 'success', 'questions': []})
+        
+        questions = []
+
+        for word in words:
+            wrong_translations = random.sample(
+                [w['translation'] for w in words if w['id'] != word['id']],
+                min(3, len(words) - 1)
+            )
+
+            options = [{'translation': word['translation'], 'is_correct': True}] + [
+                {'translation': trans, 'is_correct': False} for trans in wrong_translations
+            ]
+            random.shuffle(options)
+
+            questions.append({
+             
+                'id': word['id'],
+                'word': word['word'],
+                'transcription': word['transcription'],
+                'options': options
+            })
+        
+        return JsonResponse({'status': 'success', 'questions': questions})
+
+    except Exception as e:
+            return JsonResponse({'status': 'error','error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+def search_words(request):
+    try:
+        query = request.GET.get('q', '').strip().lower()
+        user = request.user
+
+        if len(query) < 2:
+            return JsonResponse({'status': 'success', 'count': 0, 'results': []})
+
+        words = Word.objects.filter(
+            Q(word__icontains=query) | Q(translation__icontains=query)
+        ).distinct()
+
+        exact_matches = []
+        partial_matches = []
+
+        for word in words:
+            accessible_categories = word.category.filter(
+                Q(owner__isnull=True) |  # Общие категории
+                Q(owner=request.user.id if user.is_authenticated else None)  # Категории пользователя
+            )
+
+            for category in accessible_categories:
+                item = {
+                    'word': word.word,
+                    'translation': word.translation,
+                    'transcription': word.transcription,
+                    'category_name': category.name,
+                    'category_id': category.id,
+                    'is_private': category.owner is not None
+                }
+
+                if word.word.lower() == query or word.translation.lower() == query:
+                    exact_matches.append(item)
+                else:
+                    partial_matches.append(item)
+
+        results = exact_matches + partial_matches
+
+        return JsonResponse({
+            'status': 'success',
+            'count': len(results),
+            'results': results
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+    
+
+LEARNING_METHODS = {
+    'new_words': 'new_words',
+    'repeat': 'repeat',
+    'test': 'test'
+}
+
+@require_http_methods(["POST"])
+@auth_required(redirect_to_login=False)
+def track_session(request):
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        user = request.user
+
+        if 'type' not in data:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Missing required field: type'
+            }, status=400)
+        
+        if data['type'] == 'session_start':
+            if 'page_url' not in data or 'session_start' not in data:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Missing required fields for session start'
+                }, status=400)
+            try:
+                parsed_url = urlparse(data['page_url'])
+                page = parsed_url.path.split('/')[-1]
+                query_params = parse_qs(parsed_url.query)
+                category_id = query_params.get('category_id', [None])[0]
+
+                method = LEARNING_METHODS.get(page)
+                if not method:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Invalid learning method'
+                    }, status=400)
+                
+                if category_id:
+                    try:
+                        category = Category.objects.get(id=category_id)
+                        if category.owner and category.owner != user:
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'No permission for this category'
+                            }, status=403)
+                    except Category.DoesNotExist:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Category not found'
+                        }, status=404)
+            
+                session = Learning_Session.objects.create(
+                    user=user,
+                    start_time=data['session_start'],
+                    method=LEARNING_METHODS.get(page, ''),
+                    category_id=category_id
+                )
+                return JsonResponse({
+                    'status': 'success', 
+                    'message': 'session was started', 
+                    'session_id': session.id
+                    }, status=200)
+            
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Failed to start session: {str(e)}'
+                }, status=400)
+        
+        elif data['type'] == 'session_end':
+            required_fields = ['session_id', 'session_end', 'duration']
+            if not all(field in data for field in required_fields):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Missing required fields for session end: {', '.join(required_fields)}'
+                }, status=400)
+            
+            try:
+                session = Learning_Session.objects.get(id=data['session_id'])
+                if session.user != user:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'This session does not belong to you'
+                    }, status=403)
+
+                session.end_time = data['session_end']
+                session.duration = data['duration']
+                session.save()
+                
+                return JsonResponse({
+                    'status': 'success', 
+                    'message': 'Session ended successfully'
+                }, status=200)
+
+            except Learning_Session.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Session not found'
+                }, status=404)
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Failed to end session: {str(e)}'
+                }, status=400)
+
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid session type'
+        }, status=400)
+    
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

@@ -20,7 +20,7 @@ let questions = [];
 
 async function loadTest() {
     try {
-        const response = await fetch(`/api/learning/get_test_questions?category_id=${category_id}`);
+        const response = await fetch(`/learning/get_test_questions/?category_id=${category_id}`);
         const data = await response.json();
 
         if (data.questions && data.questions.length > 0) {

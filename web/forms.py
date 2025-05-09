@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from api.models import Feedback, Category, Word
+from web.models import Feedback, Category, Word
 
 User = get_user_model()
 

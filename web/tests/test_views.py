@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.models import AnonymousUser
-from api.models import Category, Word, Learned_Word, Word_Repetition, Learning_Category, Feedback
+from web.models import Answer_Attempt, Category, Learning_Session, Word, Learned_Word, Word_Repetition, Learning_Category, Feedback
 from web.forms import AddCategoryForm, AddWordForm, EditCategoryForm, EditWordForm, RegistrationForm, AuthForm, FeedbackForm
 import os
 import json
@@ -17,6 +17,8 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 from django.core.files.storage import default_storage
+
+from web.views import REPETITION_INTERVALS
 
 User = get_user_model()
 
@@ -3041,3 +3043,1462 @@ class EditCategoryViewTests(TestCase):
         })
         self.assertEqual(response.status_code, 400)
         self.assertIn('Обязательное поле.', response.context['form'].errors['name'])
+
+
+class UpdateUserCategoriesTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='testuser', password='123')
+        self.other_user = User.objects.create_user(username='otheruser', password='123')
+        
+        self.user_category = Category.objects.create(
+            name='User Category',
+            owner=self.user,
+            description='Test'
+        )
+        self.common_category = Category.objects.create(
+            name='Common Category',
+            owner=None,
+            description='Common'
+        )
+        self.other_user_category = Category.objects.create(
+            name='Other User Category',
+            owner=self.other_user,
+            description='Other'
+        )
+        self.url = reverse('update_user_categories')
+
+    def test_add_user_category(self):
+        """Добавление своей категории в изучение"""
+        self.client.login(username='testuser', password='123')
+        self.assertFalse(Learning_Category.objects.filter(
+            user=self.user, 
+            category=self.user_category
+        ).exists())
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'category_id': self.user_category.id, 'is_checked': True}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        self.assertTrue(Learning_Category.objects.filter(
+            user=self.user, 
+            category=self.user_category
+        ).exists())
+
+    def test_remove_user_category(self):
+        """Удаление своей категории из изучения"""
+        Learning_Category.objects.create(user=self.user, category=self.user_category)
+        self.assertTrue(Learning_Category.objects.filter(
+            user=self.user, 
+            category=self.user_category
+        ).exists())
+
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'category_id': self.user_category.id, 'is_checked': False}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        self.assertFalse(Learning_Category.objects.filter(
+            user=self.user, 
+            category=self.user_category
+        ).exists())
+
+    def test_add_common_category(self):
+        """Добавление общей категории в изучение"""
+        self.assertFalse(Learning_Category.objects.filter(
+            user=self.user, 
+            category=self.common_category
+        ).exists())
+
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'category_id': self.common_category.id, 'is_checked': True}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Learning_Category.objects.filter(
+            user=self.user, 
+            category=self.common_category
+        ).exists())
+
+    def test_remove_common_category(self):
+        """Удаление общей категории из изучения"""
+        Learning_Category.objects.create(user=self.user, category=self.common_category)
+        self.assertTrue(Learning_Category.objects.filter(
+            user=self.user, 
+            category=self.common_category
+        ).exists())
+
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'category_id': self.common_category.id, 'is_checked': False}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Learning_Category.objects.filter(
+            user=self.user, 
+            category=self.common_category
+        ).exists())
+
+    def test_add_other_user_category_fails(self):
+        """Попытка добавить чужую категорию должна завершиться ошибкой"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'category_id': self.other_user_category.id, 'is_checked': True}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()['status'], 'error')
+        self.assertFalse(Learning_Category.objects.filter(
+            user=self.user, 
+            category=self.other_user_category
+        ).exists())
+
+    def test_remove_other_user_category_fails(self):
+            """Попытка удалить чужую категорию должна завершиться ошибкой"""
+            Learning_Category.objects.create(user=self.user, category=self.other_user_category)
+            self.assertTrue(Learning_Category.objects.filter(
+                user=self.user, 
+                category=self.other_user_category
+            ).exists())
+            self.client.login(username='testuser', password='123')
+            response = self.client.post(
+                self.url,
+                data=json.dumps({'category_id': self.other_user_category.id, 'is_checked': False}),
+                content_type='application/json'
+            )
+            
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(response.json()['status'], 'error')
+            self.assertTrue(Learning_Category.objects.filter(
+                user=self.user, 
+                category=self.other_user_category
+            ).exists())
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный доступ должен завершиться ошибкой"""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'category_id': self.common_category.id, 'is_checked': True}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_invalid_category_id(self):
+        """Несуществующий ID категории"""
+        self.client.login(username='testuser', password='123')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'category_id': 9999, 'is_checked': True}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()['status'], 'error')
+
+    def test_missing_category_id(self):
+        """Отсутствие category_id"""
+        self.client.login(username='testuser', password='123')
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'is_checked': True}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        
+    def test_missing_category_id(self):
+        """Отсутствие is_checked"""
+        self.client.login(username='testuser', password='123')
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'category_id': self.common_category.id}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+
+class NewWordSendResultTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+        self.user = User.objects.create_user(username='user', password='pass')
+        self.user2 = User.objects.create_user(username='user2', password='pass2')
+        
+        self.user_category = Category.objects.create(
+            name='User Category',
+            owner=self.user
+        )
+        self.common_category = Category.objects.create(
+            name='Common Category',
+            owner=None
+        )
+        
+        self.user_word = Word.objects.create(
+            word='user_word',
+            translation='translation',
+            transcription='transcription'
+        )
+        self.user_word.category.add(self.user_category)
+        
+        self.common_word = Word.objects.create(
+            word='common_word',
+            translation='translation_common',
+            transcription='transcription_common'
+        )
+        self.common_word.category.add(self.common_category)
+        self.url = reverse('new_word_send_result')
+
+    def test_mark_word_as_known(self):
+        """Пометить слово как известное"""
+        self.client.login(username='user', password='pass')
+        self.assertFalse(Learned_Word.objects.filter(user=self.user, word=self.user_word).exists())
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.user_word.id, 'is_known': True}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        self.assertTrue(Learned_Word.objects.filter(user=self.user, word=self.user_word).exists())
+
+    def test_mark_word_for_repetition(self):
+        """Добавить слово на повторение"""
+        self.client.login(username='user', password='pass')
+        self.assertFalse(Word_Repetition.objects.filter(user=self.user, word=self.user_word).exists())
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.user_word.id, 'is_known': False}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        repetition = Word_Repetition.objects.get(user=self.user, word=self.user_word)
+        self.assertAlmostEqual(
+            repetition.next_review,
+            timezone.now() + timedelta(seconds=30),
+            delta=timedelta(seconds=5)
+        )
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный доступ должен возвращать 403"""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.user_word.id, 'is_known': True}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_missing_word_id(self):
+        """Отсутствие word_id"""
+        self.client.login(username='user', password='pass')
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'is_known': True}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        
+    def test_missing_is_known(self):
+        """Отсутствие is_known"""
+        self.client.login(username='user', password='pass')
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.user_word.id}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_word_id(self):
+        """Несуществующий word_id"""
+        self.client.login(username='user', password='pass')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': 9999, 'is_known': True}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()['status'], 'error')
+
+    def test_duplicate_known_word(self):
+        """Повторное добавление известного слова"""
+        self.client.login(username='user', password='pass')
+        Learned_Word.objects.create(user=self.user, word=self.user_word)
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.user_word.id, 'is_known': True}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Learned_Word.objects.filter(user=self.user, word=self.user_word).count(), 1)
+
+    def test_word_already_in_repetition(self):
+        """Слово уже в списке на повторение"""
+        self.client.login(username='user', password='pass')
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.user_word,
+            next_review=timezone.now() + timedelta(days=1)
+        )
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.user_word.id, 'is_known': False}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        repetition = Word_Repetition.objects.get(user=self.user, word=self.user_word)
+        self.assertAlmostEqual(
+            repetition.next_review,
+            timezone.now() + timedelta(seconds=30),
+            delta=timedelta(seconds=5)
+        )
+
+    def test_mark_other_users_word(self):
+        """Попытка пометить чужое слово"""
+        self.client.login(username='user2', password='pass2')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.user_word.id, 'is_known': True}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()['status'], 'error')
+        self.assertIn('no permission for this word', response.json()['message'].lower())
+
+    def test_mark_common_word(self):
+        """Пометка слова из общей категории"""
+        self.client.login(username='user', password='pass')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.common_word.id, 'is_known': True}),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Learned_Word.objects.filter(
+            user=self.user, 
+            word=self.common_word
+        ).exists())
+
+    def test_mark_word_from_common_category_another_user(self):
+        """Разные пользователи могут помечать слова из общих категорий"""
+        self.client.login(username='user', password='pass')
+        response_user = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.common_word.id, 'is_known': True}),
+            content_type='application/json'
+        )
+        self.assertEqual(response_user.status_code, 200)
+        
+        self.client.login(username='user2', password='pass2')
+        response_user2 = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.common_word.id, 'is_known': True}),
+            content_type='application/json'
+        )
+        self.assertEqual(response_user2.status_code, 200)
+        
+        self.assertEqual(Learned_Word.objects.filter(word=self.common_word).count(), 2)
+        self.assertTrue(Learned_Word.objects.filter(user=self.user, word=self.common_word).exists())
+        self.assertTrue(Learned_Word.objects.filter(user=self.user2, word=self.common_word).exists())
+
+
+class GetNewWordTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('get_new_word')
+        
+        # Создаем пользователей
+        self.user = User.objects.create_user(username='user', password='pass')
+        self.user2 = User.objects.create_user(username='user2', password='pass2')
+        
+        # Создаем категории
+        self.user_category = Category.objects.create(name='User Category')
+        self.user2_category = Category.objects.create(name='User2 Category')
+        self.common_category = Category.objects.create(name='Common Category', owner=None)
+        
+        # Связываем категории с пользователями
+        Learning_Category.objects.create(user=self.user, category=self.user_category)
+        Learning_Category.objects.create(user=self.user, category=self.common_category)
+        Learning_Category.objects.create(user=self.user2, category=self.user2_category)
+        
+        # Создаем слова
+        self.user_word = Word.objects.create(
+            word='user_word',
+            translation='translation',
+            transcription='transcription'
+        )
+        self.user_word.category.add(self.user_category)
+        
+        self.common_word = Word.objects.create(
+            word='common_word',
+            translation='translation_common',
+            transcription='transcription_common'
+        )
+        self.common_word.category.add(self.common_category)
+        
+        self.user2_word = Word.objects.create(
+            word='user2_word',
+            translation='translation_user2',
+            transcription='transcription_user2'
+        )
+        self.user2_word.category.add(self.user2_category)
+
+    def test_get_new_word_success(self):
+        """Успешное получение нового слова"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        self.assertIn(response.json()['id'], [self.user_word.id, self.common_word.id])
+        
+        response_data = response.json()
+        self.assertIn('word', response_data)
+        self.assertIn('translation', response_data)
+        self.assertIn('transcription', response_data)
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный доступ должен возвращать ошибку"""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_no_learning_categories(self):
+        """Нет изучаемых категорий"""
+        Learning_Category.objects.filter(user=self.user).delete()
+        self.client.login(username='user', password='pass')
+        
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            'status': 'error',
+            'message': 'No categories that user learns'
+        })
+
+    def test_all_words_learned_or_in_repetition(self):
+        """Все слова уже изучены или в повторении"""
+        Learned_Word.objects.create(user=self.user, word=self.user_word)
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.common_word,
+            next_review=timezone.now() + timedelta(days=1)
+        )
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            'status': 'error',
+            'message': 'No new words to learn'
+        })
+
+    def test_only_gets_words_from_user_categories(self):
+        """Получаем только слова из категорий пользователя"""
+        self.client.login(username='user', password='pass')
+        
+        returned_ids = set()
+        for _ in range(10):
+            response = self.client.get(self.url)
+            if response.json()['status'] == 'success':
+                returned_ids.add(response.json()['id'])
+        
+        self.assertTrue(returned_ids.issubset({self.user_word.id, self.common_word.id}))
+        self.assertNotIn(self.user2_word.id, returned_ids)
+
+    def test_word_from_common_category(self):
+        """Слово из общей категории доступно всем пользователям"""
+        self.client.login(username='user', password='pass')
+        response_user = self.client.get(self.url)
+        if response_user.json()['status'] == 'success':
+            self.assertIn(response_user.json()['id'], [self.user_word.id, self.common_word.id])
+        
+        self.client.login(username='user2', password='pass2')
+        Learning_Category.objects.create(user=self.user2, category=self.common_category)
+        response_user2 = self.client.get(self.url)
+        if response_user2.json()['status'] == 'success':
+            self.assertIn(response_user2.json()['id'], [self.user2_word.id, self.common_word.id])
+
+    def test_random_word_selection(self):
+        """Слова возвращаются в случайном порядке"""
+        self.client.login(username='user', password='pass')
+        
+        for i in range(2, 5):
+            word = Word.objects.create(
+                word=f'word_{i}',
+                translation=f'translation_{i}',
+                transcription=f'transcription_{i}'
+            )
+            word.category.add(self.user_category)
+        
+        # Собираем ID возвращаемых слов
+        returned_ids = []
+        for _ in range(20):
+            response = self.client.get(self.url)
+            if response.json()['status'] == 'success':
+                returned_ids.append(response.json()['id'])
+        
+        # Проверяем, что есть хотя бы 2 разных слова
+        self.assertGreater(len(set(returned_ids)), 1)
+
+    def test_server_error_handling(self):
+        """Обработка исключений сервера"""
+        original_filter = Word.objects.filter
+        Word.objects.filter = lambda *args, **kwargs: 1/0
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()['status'], 'error')
+        
+        Word.objects.filter = original_filter
+
+    def test_word_structure_in_response(self):
+        """Проверка структуры возвращаемого слова"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        if response.json()['status'] == 'success':
+            data = response.json()
+            self.assertIn('id', data)
+            self.assertIn('word', data)
+            self.assertIn('translation', data)
+            self.assertIn('transcription', data)
+
+            self.assertTrue(data['word'])
+            self.assertTrue(data['translation'])
+            self.assertTrue(data['transcription'])
+
+
+class GetWordRepeatTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('get_word_repeat')
+        
+        self.user = User.objects.create_user(username='user', password='pass')
+        self.user2 = User.objects.create_user(username='user2', password='pass2')
+        
+        self.user_category = Category.objects.create(name='User Category')
+        self.user2_category = Category.objects.create(name='User2 Category')
+        
+        Learning_Category.objects.create(user=self.user, category=self.user_category)
+        Learning_Category.objects.create(user=self.user2, category=self.user2_category)
+        
+        self.word1 = Word.objects.create(
+            word='word1',
+            translation='translation1',
+            transcription='transcription1'
+        )
+        self.word1.category.add(self.user_category)
+        
+        self.word2 = Word.objects.create(
+            word='word2',
+            translation='translation2',
+            transcription='transcription2'
+        )
+        self.word2.category.add(self.user_category)
+        
+        self.word3 = Word.objects.create(
+            word='word3',
+            translation='translation3',
+            transcription='transcription3'
+        )
+        self.word3.category.add(self.user2_category)
+
+    def test_get_word_to_repeat_success(self):
+        """Успешное получение слова для повторения"""
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.word1,
+            next_review=timezone.now() - timedelta(hours=1)
+        )
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.word2,
+            next_review=timezone.now() - timedelta(minutes=30)
+        )
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        self.assertIn(response.json()['id'], [self.word1.id, self.word2.id])
+
+    def test_no_words_to_repeat(self):
+        """Нет слов для повторения"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            'status': 'error',
+            'message': 'No words to repeat'
+        })
+
+    def test_only_gets_own_words(self):
+        """Получаем только свои слова для повторения"""
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.word1,
+            next_review=timezone.now() - timedelta(hours=1)
+        )
+        Word_Repetition.objects.create(
+            user=self.user2,
+            word=self.word3,
+            next_review=timezone.now() - timedelta(hours=1)
+        )
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.json()['id'], self.word1.id)
+        self.assertNotEqual(response.json()['id'], self.word3.id)
+
+    def test_only_gets_due_words(self):
+        """Получаем только слова, у которых наступило время повторения"""
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.word1,
+            next_review=timezone.now() - timedelta(hours=1)
+        )
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.word2,
+            next_review=timezone.now() + timedelta(days=1)
+        )
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.json()['id'], self.word1.id)
+        self.assertNotEqual(response.json()['id'], self.word2.id)
+
+    def test_random_word_selection(self):
+        """Слова возвращаются в случайном порядке"""
+        for i in range(1, 6):
+            word = Word.objects.create(
+                word=f'word_{i}',
+                translation=f'translation_{i}',
+                transcription=f'transcription_{i}'
+            )
+            word.category.add(self.user_category)
+            Word_Repetition.objects.create(
+                user=self.user,
+                word=word,
+                next_review=timezone.now() - timedelta(hours=1)
+            )
+        
+        self.client.login(username='user', password='pass')
+        
+        returned_ids = []
+        for _ in range(20):
+            response = self.client.get(self.url)
+            returned_ids.append(response.json()['id'])
+    
+        self.assertGreater(len(set(returned_ids)), 1)
+
+    def test_word_structure_in_response(self):
+        """Проверка структуры возвращаемого слова"""
+        Word_Repetition.objects.create(
+            user=self.user,
+            word=self.word1,
+            next_review=timezone.now() - timedelta(hours=1)
+        )
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        data = response.json()
+        self.assertIn('id', data)
+        self.assertIn('word', data)
+        self.assertIn('translation', data)
+        self.assertIn('transcription', data)
+
+        self.assertTrue(data['word'])
+        self.assertTrue(data['translation'])
+        self.assertTrue(data['transcription'])
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный доступ должен возвращать ошибку"""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_server_error_handling(self):
+        """Обработка исключений сервера"""
+        original_filter = Word_Repetition.objects.filter
+        Word_Repetition.objects.filter = lambda *args, **kwargs: 1/0
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()['status'], 'error')
+        
+        Word_Repetition.objects.filter = original_filter
+
+
+class SendRepeatResultTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('send_repeat_result')
+        
+        # Пользователи
+        self.user = User.objects.create_user(username='user', password='pass')
+        self.user2 = User.objects.create_user(username='user2', password='pass2')
+        
+        # Категории
+        self.user_category = Category.objects.create(name='User Category', owner=self.user)
+        self.user2_category = Category.objects.create(name='User2 Category', owner=self.user2)
+        self.common_category = Category.objects.create(name='Common Category', owner=None)
+        
+        # Слова
+        self.user_word = Word.objects.create(
+            word='user_word',
+            translation='translation',
+            transcription='transcription'
+        )
+        self.user_word.category.add(self.user_category)
+        
+        self.common_word = Word.objects.create(
+            word='common_word',
+            translation='translation_common',
+            transcription='transcription_common'
+        )
+        self.common_word.category.add(self.common_category)
+        
+        # Сессии
+        self.user_session = Learning_Session.objects.create(user=self.user, method='repeat')
+        self.user2_session = Learning_Session.objects.create(user=self.user2, method='repeat')
+        
+        # Повторения
+        self.user_repetition = Word_Repetition.objects.create(
+            user=self.user,
+            word=self.user_word,
+            next_review=timezone.now() - timedelta(hours=1),
+            repetition_count=3
+        )
+        self.common_repetition = Word_Repetition.objects.create(
+            user=self.user,
+            word=self.common_word,
+            next_review=timezone.now() - timedelta(hours=1)
+        )
+
+    def test_correct_answer_first_time(self):
+        """Правильный ответ при повторении"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': True,
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        self.assertEqual(response.json()['message'], 'Repetition updated')
+        
+        repetition = Word_Repetition.objects.get(id=self.user_repetition.id)
+        self.assertEqual(repetition.repetition_count, 4)
+        self.assertAlmostEqual(
+            repetition.next_review,
+            timezone.now() + timedelta(minutes=REPETITION_INTERVALS[4]),
+            delta=timedelta(seconds=5)
+        )
+        
+        attempt = Answer_Attempt.objects.last()
+        self.assertEqual(attempt.user, self.user)
+        self.assertEqual(attempt.word, self.user_word)
+        self.assertEqual(attempt.session, self.user_session)
+        self.assertTrue(attempt.is_correct)
+
+    def test_incorrect_answer(self):
+        """Неправильный ответ"""
+        initial_count = self.user_repetition.repetition_count
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': False,
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['message'], 'Word difficulty increased')
+        
+        repetition = Word_Repetition.objects.get(id=self.user_repetition.id)
+        self.assertEqual(repetition.repetition_count, initial_count - 1)
+        self.assertAlmostEqual(
+            repetition.next_review,
+            timezone.now() + timedelta(minutes=REPETITION_INTERVALS[initial_count - 1]),
+            delta=timedelta(seconds=5)
+        )
+        
+        attempt = Answer_Attempt.objects.last()
+        self.assertFalse(attempt.is_correct)
+
+    def test_word_learned(self):
+        """Слово выучено после 5 правильных повторений"""
+        self.user_repetition.repetition_count = 5
+        self.user_repetition.save()
+        
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': True,
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['message'], 'Word learned!')
+        
+        self.assertFalse(Word_Repetition.objects.filter(id=self.user_repetition.id).exists())
+        self.assertTrue(Learned_Word.objects.filter(
+            user=self.user,
+            word=self.user_word
+        ).exists())
+
+    def test_new_repetition_created(self):
+        """Создание нового повторения, если его не было"""
+        Word_Repetition.objects.all().delete()
+        
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': True,
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Word_Repetition.objects.filter(
+            user=self.user,
+            word=self.user_word
+        ).exists())
+
+    def test_missing_fields(self):
+        """Отсутствие обязательных полей"""
+        self.client.login(username='user', password='pass')
+        
+        # Без word_id
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'is_known': True, 'session_id': self.user_session.id}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        
+        # Без is_known
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.user_word.id, 'session_id': self.user_session.id}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        
+        # Без session_id
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'word_id': self.user_word.id, 'is_known': True}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_word_id(self):
+        """Несуществующее слово"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': 9999,
+            'is_known': True,
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 404)
+
+    def test_session_not_found(self):
+        """Несуществующая сессия обучения"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': True,
+            'session_id': 9999
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()['message'], 'Learning session not found')
+
+    def test_other_users_session(self):
+        """Попытка использовать чужую сессию"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': True,
+            'session_id': self.user2_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()['message'], 'This session does not belong to the current user')
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный доступ"""
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': True,
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 403)
+
+    def test_other_users_word(self):
+        """Попытка работать с чужим словом"""
+        # Создаем слово, которое принадлежит только user2
+        word = Word.objects.create(word='private_word', translation='trans', transcription='transcr')
+        word.category.add(self.user2_category)
+        
+        Word_Repetition.objects.create(
+            user=self.user2,
+            word=word,
+            next_review=timezone.now() - timedelta(hours=1)
+        )
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({
+                'word_id': word.id,
+                'is_known': True,
+                'session_id': self.user_session.id
+            }),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()['message'], 'No permission for this word')
+
+    def test_repetition_count_never_negative(self):
+        """Счетчик повторений никогда не становится отрицательным"""
+        self.user_repetition.repetition_count = 0
+        self.user_repetition.save()
+        
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': False,
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        repetition = Word_Repetition.objects.get(id=self.user_repetition.id)
+        self.assertEqual(repetition.repetition_count, 0)
+
+    def test_common_word_access(self):
+        """Работа со словом из общей категории"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.common_word.id,
+            'is_known': True,
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+
+    def test_word_not_ready_for_repetition(self):
+        """Попытка повторить слово, у которого не наступило время повторения"""
+        self.user_repetition.next_review = timezone.now() + timedelta(days=1)
+        self.user_repetition.save()
+        
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': True,
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('Word is not ready for repetition yet. Next review at', response.json()['message'])
+
+    def test_server_error_handling(self):
+        """Обработка исключений сервера"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'word_id': self.user_word.id,
+            'is_known': "not-a-boolean",
+            'session_id': self.user_session.id
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['status'], 'error')
+
+
+class GetTestQuestionsTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('get_test_questions')
+        
+        # Пользователи
+        self.user = User.objects.create_user(username='user', password='pass')
+        self.user2 = User.objects.create_user(username='user2', password='pass2')
+        
+        # Категории
+        self.user_category = Category.objects.create(
+            name='User Category', 
+            owner=self.user
+        )
+        self.common_category = Category.objects.create(
+            name='Common Category',
+            owner=None
+        )
+        
+        # Слова
+        self.word1 = Word.objects.create(
+            word='word1',
+            translation='translation1',
+            transcription='transcription1'
+        )
+        self.word1.category.add(self.user_category)
+        
+        self.word2 = Word.objects.create(
+            word='word2',
+            translation='translation2',
+            transcription='transcription2'
+        )
+        self.word2.category.add(self.user_category)
+        
+        self.common_word = Word.objects.create(
+            word='common_word',
+            translation='common_translation',
+            transcription='common_transcription'
+        )
+        self.common_word.category.add(self.common_category)
+
+    def test_successful_request(self):
+        """Успешный запрос вопросов"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(
+            self.url,
+            {'category_id': self.user_category.id}
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(len(data['questions']), 2)
+        
+        question = data['questions'][0]
+        self.assertIn('id', question)
+        self.assertIn('word', question)
+        self.assertIn('transcription', question)
+        self.assertIn('options', question)
+        
+        correct_options = [opt for opt in question['options'] if opt['is_correct']]
+        self.assertEqual(len(correct_options), 1)
+
+    def test_missing_category_id(self):
+        """Отсутствует category_id"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['message'], 'Category ID is required')
+
+    def test_category_not_found(self):
+        """Категория не найдена"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(
+            self.url,
+            {'category_id': 9999}
+        )
+        
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()['message'], 'Category not found')
+
+    def test_no_permission_for_category(self):
+        """Нет прав доступа к категории"""
+        other_category = Category.objects.create(
+            name='Other Category',
+            owner=self.user2
+        )
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(
+            self.url,
+            {'category_id': other_category.id}
+        )
+        
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()['message'], 'No permission for this category')
+
+    def test_empty_category(self):
+        """Пустая категория"""
+        empty_category = Category.objects.create(
+            name='Empty Category',
+            owner=self.user
+        )
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(
+            self.url,
+            {'category_id': empty_category.id}
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['questions'], [])
+
+    def test_common_category_access(self):
+        """Доступ к общей категории"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(
+            self.url,
+            {'category_id': self.common_category.id}
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()['questions']), 1)
+
+    def test_options_generation(self):
+        """Правильная генерация вариантов ответов"""
+        for i in range(3, 6):
+            word = Word.objects.create(
+                word=f'word{i}',
+                translation=f'translation{i}',
+                transcription=f'transcription{i}'
+            )
+            word.category.add(self.user_category)
+        
+        self.client.login(username='user', password='pass')
+        response = self.client.get(
+            self.url,
+            {'category_id': self.user_category.id}
+        )
+        
+        data = response.json()
+        for question in data['questions']:
+            self.assertEqual(len(question['options']), 4)
+            
+            correct_count = sum(1 for opt in question['options'] if opt['is_correct'])
+            self.assertEqual(correct_count, 1)
+            
+            correct_option = next(opt for opt in question['options'] if opt['is_correct'])
+            word = Word.objects.get(id=question['id'])
+            self.assertEqual(correct_option['translation'], word.translation)
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный доступ"""
+        response = self.client.get(
+            self.url,
+            {'category_id': self.user_category.id}
+        )
+        self.assertEqual(response.status_code, 403)
+
+
+class SearchWordsTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('search_words')
+        
+        self.user = User.objects.create_user(username='user', password='pass')
+        self.user2 = User.objects.create_user(username='user2', password='pass2')
+        
+        self.public_cat = Category.objects.create(name='Public', owner=None)
+        self.private_cat = Category.objects.create(name='Private', owner=self.user)
+        self.private_cat2 = Category.objects.create(name='Private2', owner=self.user2)
+        
+        self.word1 = Word.objects.create(word='apple', translation='яблоко', transcription='transcript1')
+        self.word1.category.add(self.public_cat)
+        
+        self.word2 = Word.objects.create(word='banana', translation='банан', transcription='transcript2')
+        self.word2.category.add(self.private_cat)
+        
+        self.word3 = Word.objects.create(word='pineapple', translation='ананас', transcription='transcript3')
+        self.word3.category.add(self.public_cat, self.private_cat2)
+
+    def test_basic_search(self):
+        """Базовый поиск по словам"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url, {'q': 'apple'})
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['count'], 2)
+        self.assertEqual(len(data['results']), 2)
+        
+        for item in data['results']:
+            self.assertIn('word', item)
+            self.assertIn('translation', item)
+            self.assertIn('transcription', item)
+            self.assertIn('category_name', item)
+            self.assertIn('category_id', item)
+            self.assertIn('is_private', item)
+
+    def test_min_query_length(self):
+        """Проверка минимальной длины запроса"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url, {'q': 'a'})
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 0)
+
+    def test_access_control(self):
+        """Проверка прав доступа к категориям"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url, {'q': 'pineapple'})
+        
+        data = response.json()
+
+        count = 0
+        for item in data['results']:
+            if item['word'] == 'pineapple':
+                count += 1
+                self.assertEqual(item['category_id'], self.public_cat.id)
+        self.assertEqual(count, 1)
+
+    def test_exact_match_priority(self):
+        """Точные совпадения должны быть первыми"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url, {'q': 'apple'})
+        
+        data = response.json()
+        self.assertEqual(data['results'][0]['word'], 'apple')
+        self.assertEqual(data['results'][1]['word'], 'pineapple')
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный доступ"""
+        response = self.client.get(self.url, {'q': 'apple'})
+        data = response.json()
+        self.assertEqual(data['results'][0]['word'], 'apple')
+
+    def test_empty_query(self):
+        """Пустой запрос"""
+        self.client.login(username='user', password='pass')
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 0)
+
+    def test_error_handling(self):
+        """Обработка ошибок"""
+        with patch('web.views.Word.objects.filter') as mock_filter:
+            mock_filter.side_effect = Exception('Test error')
+
+            self.client.login(username='user', password='pass')
+            response = self.client.get(self.url, {'q': 'apple'})
+            
+            self.assertEqual(response.status_code, 500)
+            self.assertEqual(response.json()['status'], 'error')
+
+
+class TrackSessionTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('track_session')
+        
+        self.user = User.objects.create_user(username='user', password='pass')
+        self.user2 = User.objects.create_user(username='user2', password='pass2')
+        
+        self.category = Category.objects.create(name='Test Category', owner=self.user)
+        self.session = Learning_Session.objects.create(
+            user=self.user,
+            method='new_words',
+            category=self.category
+        )
+
+    def test_session_start_success(self):
+        """Успешное начало сессии"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'type': 'session_start',
+            'page_url': f'http://127.0.0.1/learning/new_words?category_id={self.category.id}',
+            'session_start': '2023-01-01T00:00:00Z'
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+
+    def test_session_start_missing_fields(self):
+        """Отсутствие обязательных полей"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'type': 'session_start',
+            'session_start': '2023-01-01T00:00:00Z'
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['status'], 'error')
+
+    def test_session_end_success(self):
+        """Успешное завершение сессии"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'type': 'session_end',
+            'session_id': self.session.id,
+            'session_end': '2023-01-01T01:00:00Z',
+            'duration': 3600
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+
+    def test_session_end_other_user(self):
+        """Попытка завершить чужую сессию"""
+        self.client.login(username='user2', password='pass2')
+        data = {
+            'type': 'session_end',
+            'session_id': self.session.id,
+            'session_end': '2023-01-01T01:00:00Z',
+            'duration': 3600
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()['status'], 'error')
+
+    def test_invalid_session_type(self):
+        """Неверный тип сессии"""
+        self.client.login(username='user', password='pass')
+        data = {
+            'type': 'invalid_type',
+            'page_url': 'http://127.0.0.1/learning/invalid_session_type',
+            'session_start': '2023-01-01T00:00:00Z'
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['status'], 'error')
+
+    def test_unauthenticated_access(self):
+        """Неавторизованный доступ"""
+        data = {
+            'type': 'session_start',
+            'page_url': 'http://127.0.0.1/learning/new_words',
+            'session_start': '2023-01-01T00:00:00Z'
+        }
+        
+        response = self.client.post(
+            self.url,
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 403)
