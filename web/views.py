@@ -32,7 +32,17 @@ from web.models import (
     Learning_Session, User, Word, Word_Repetition,
 )
 
+
+REPETITION_INTERVALS = {0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
+LEARNING_METHODS = {
+    'new_words': 'new_words',
+    'repeat': 'repeat',
+    'test': 'test'
+}
+
+###################### Helpers ######################
 def auth_required(view_func=None, redirect_to_login=True):
+    """Декоратор для проверки аутентификации пользователя."""
     def decorator(view_func):
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
@@ -47,10 +57,192 @@ def auth_required(view_func=None, redirect_to_login=True):
 
     if view_func:
         return decorator(view_func)
-    else:
-        return decorator
+    return decorator
 
 
+def get_user_categories(user):
+    """Получает категории, доступные пользователю."""
+    return Category.objects.filter(
+        Q(owner__isnull=True) | Q(owner_id=user.id)
+    )
+    
+
+def get_user_selected_categories(user):
+    """Получает выбранные пользователем категории для обучения."""
+    return Learning_Category.objects.filter(
+        user_id=user.id).values_list('category_id', flat=True)
+
+
+def check_word_permission(word, user):
+    """Проверяет, есть ли у пользователя доступ к слову."""
+    return word.category.filter(Q(owner__isnull=True) | Q(owner=user)).exists()
+
+
+def get_word_status_annotations(user):
+    """Возвращает аннотации для статуса слова."""
+    return {
+        'status': Case(
+            When(
+                Exists(Learned_Word.objects.filter(word=OuterRef('pk'), user=user)),
+                then=Value('learned')
+            ),
+            When(
+                Exists(Word_Repetition.objects.filter(word=OuterRef('pk'), user=user)),
+                then=Value('in_progress')
+            ),
+            default=Value('new'),
+            output_field=CharField()
+        ),
+        'repetition_count': Coalesce(
+            Subquery(
+                Word_Repetition.objects.filter(
+                    word=OuterRef('pk'),
+                    user=user
+                ).values('repetition_count')[:1]
+            ),
+            Value(0)
+        )
+    }
+
+
+def handle_word_file_upload(user, category, word_file):
+    """Обрабатывает загрузку файла со словами."""
+    upload_path = os.path.join('tmp', str(user.id), f'{category.name}.txt')
+    file_path = default_storage.save(upload_path, word_file)
+    absolute_file_path = default_storage.path(file_path)
+    
+    with default_storage.open(file_path, 'wb+') as destination:
+        for chunk in word_file.chunks():
+            destination.write(chunk)
+    
+    return absolute_file_path
+
+
+def get_word_progress_data(words, user):
+    """Добавляет данные о прогрессе изучения слов."""
+    wordlist = list(words)
+    for word in wordlist:
+        word.repetition_progress = min(100, word.repetition_count * 20)
+    return wordlist
+
+
+def generate_test_questions(words):
+    """Генерирует вопросы для теста."""
+    questions = []
+    for word in words:
+        wrong_translations = random.sample(
+            [w['translation'] for w in words if w['id'] != word['id']],
+            min(3, len(words) - 1)
+        )
+
+        options = [{'translation': word['translation'], 'is_correct': True}] + [
+            {'translation': trans, 'is_correct': False} for trans in wrong_translations
+        ]
+        random.shuffle(options)
+
+        questions.append({
+            'id': word['id'],
+            'word': word['word'],
+            'transcription': word['transcription'],
+            'options': options
+        })
+    return questions
+
+
+def handle_session_start(user, data):
+    """Обрабатывает запрос на начало сессии обучения."""
+    if 'page_url' not in data or 'session_start' not in data:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Missing required fields for session start'
+        }, status=400)
+    
+    try:
+        parsed_url = urlparse(data['page_url'])
+        page = parsed_url.path.split('/')[-1]
+        query_params = parse_qs(parsed_url.query)
+        category_id = query_params.get('category_id', [None])[0]
+
+        method = LEARNING_METHODS.get(page)
+        if not method:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid learning method'
+            }, status=400)
+        
+        if category_id:
+            try:
+                category = Category.objects.get(id=category_id)
+                if category.owner and category.owner != user:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'No permission for this category'
+                    }, status=403)
+            except Category.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Category not found'
+                }, status=404)
+    
+        session = Learning_Session.objects.create(
+            user=user,
+            start_time=data['session_start'],
+            method=method,
+            category_id=category_id
+        )
+        
+        return JsonResponse({
+            'status': 'success', 
+            'message': 'session was started', 
+            'session_id': session.id
+        }, status=200)
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Failed to start session: {str(e)}'
+        }, status=400)
+
+
+def handle_session_end(user, data):
+    """Обрабатывает запрос на завершение сессии обучения."""
+    required_fields = ['session_id', 'session_end', 'duration']
+    if not all(field in data for field in required_fields):
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Missing required fields for session end: {", ".join(required_fields)}'
+        }, status=400)
+    
+    try:
+        session = Learning_Session.objects.get(id=data['session_id'])
+        if session.user != user:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'This session does not belong to you'
+            }, status=403)
+
+        session.end_time = data['session_end']
+        session.duration = data['duration']
+        session.save()
+        
+        return JsonResponse({
+            'status': 'success', 
+            'message': 'Session ended successfully'
+        }, status=200)
+
+    except Learning_Session.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Session not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Failed to end session: {str(e)}'
+        }, status=400)
+
+
+###################### Views ######################
 def main_view(request):
     return render(request, "web/main.html")
 
@@ -65,7 +257,6 @@ def registration_view(request):
                 username=form.cleaned_data['username'],
                 email=form.cleaned_data['email'])
             user.set_password(form.cleaned_data["password"])
-
             user.save()
             is_success = True
 
@@ -88,31 +279,23 @@ def auth_view(request):
                 login(request, user)
                 return redirect("main")
 
-    return render(request, "web/auth.html", {
-        "form": form,
-    })
+    return render(request, "web/auth.html", {"form": form})
 
 
 def logout_view(request):
-    user = request.user
-
-    """try:
-        session = Session.objects.order_by("-start_time").filter(user=user).first()
-        session.end_time = datetime.now()
-        session.save()
-    except Session.DoesNotExist:
-        Session.objects.create(user=user, end_time=datetime.now())"""
-
     logout(request)
     return redirect("main")
+
 
 @auth_required
 def learning_view(request):
     return render(request, "web/learning.html")
 
+
 @auth_required
 def learning_new_words_view(request):
     return render(request, "web/new_words.html")
+
 
 @auth_required
 def learning_repeat_view(request):
@@ -121,13 +304,8 @@ def learning_repeat_view(request):
 
 @auth_required
 def learning_tests_view(request):
-    categories = Category.objects.filter(
-        Q(owner__isnull=True) | Q(owner_id=request.user.id)
-    )
-    user_selected = Learning_Category.objects.filter(
-        user_id=request.user.id
-    )
-    user_selected_categories = user_selected.values_list('category_id', flat=True)
+    categories = get_user_categories(request.user)
+    user_selected_categories = get_user_selected_categories(request.user)
 
     return render(request, "web/select_test.html", {
         "categories": categories,
@@ -136,13 +314,8 @@ def learning_tests_view(request):
 
 
 def categories_view(request):
-    categories = Category.objects.filter(
-        Q(owner__isnull=True) | Q(owner_id=request.user.id)
-    )
-    user_selected = Learning_Category.objects.filter(
-        user_id=request.user.id
-    )
-    user_selected_categories = user_selected.values_list('category_id', flat=True)
+    categories = get_user_categories(request.user)
+    user_selected_categories = get_user_selected_categories(request.user)
 
     return render(request, "web/categories.html", {
         "categories": categories,
@@ -159,16 +332,12 @@ def category_test(request):
 
     try:
         category = get_object_or_404(Category, id=category_id)
-
         if category.owner not in [None, request.user]:
-            raise PermissionDenied("Нет доступа к этой категории")
-        
+            raise PermissionDenied("Нет доступа к этой категории")   
     except ValueError:
         raise Http404("Пустой ID категории")
 
-    return render(request, "web/tests.html", {
-        "category": category,
-    })
+    return render(request, "web/tests.html", {"category": category})
 
 
 def categories_wordlist_view(request, category_id):
@@ -176,38 +345,13 @@ def categories_wordlist_view(request, category_id):
     user = request.user if request.user.is_authenticated else None
 
     if category.owner not in [None, user]:
-            raise PermissionDenied("Нет доступа к этой категории")
+        raise PermissionDenied("Нет доступа к этой категории")
 
     words = Word.objects.filter(category=category)
 
     if user:
-        wordlist = words.annotate(
-            status=Case(
-                When(
-                    Exists(Learned_Word.objects.filter(word=OuterRef('pk'), user=user)),
-                    then=Value('learned')
-                ),
-                When(
-                    Exists(Word_Repetition.objects.filter(word=OuterRef('pk'), user=user)),
-                    then=Value('in_progress')
-                ),
-                default=Value('new'),
-                output_field=CharField()
-            ),
-            repetition_count=Coalesce(
-                Subquery(
-                    Word_Repetition.objects.filter(
-                        word=OuterRef('pk'),
-                        user=user
-                    ).values('repetition_count')[:1]
-                ),
-                Value(0)
-            )
-        ).distinct()
-
-        wordlist = list(wordlist)
-        for word in wordlist:
-            word.repetition_progress = min(100, word.repetition_count * 20)
+        wordlist = words.annotate(**get_word_status_annotations(user)).distinct()
+        wordlist = get_word_progress_data(wordlist, user)
     else:
         wordlist = words.annotate(
             status=Value('new', output_field=CharField()),
@@ -221,24 +365,18 @@ def categories_wordlist_view(request, category_id):
         "highlight_word": request.GET.get('highlight', ''),
     })
 
+
 @auth_required
 def remove_category_view(request, category_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
-
-    upload_path = os.path.join(
-        'tmp',
-        str(request.user.id),
-        f'{category.name}.txt'
-    )
+    upload_path = os.path.join('tmp', str(request.user.id), f'{category.name}.txt')
     try:
         if default_storage.exists(upload_path):
             default_storage.delete(upload_path)
     except Exception:
         pass
 
-
     category.delete()
-
     return redirect('categories')
 
 
@@ -267,39 +405,32 @@ def add_category_view(request):
         category.save()
 
         word_file = request.FILES.get('word_file')
-
-        upload_path = os.path.join(
-            'tmp', 
-            str(request.user.id),
-            f'{category.name}.txt'
-        )   
-
-        file_path = default_storage.save(upload_path, word_file)
-        absolute_file_path = default_storage.path(file_path)
-            
-        with default_storage.open(file_path, 'wb+') as destination:
-            for chunk in word_file.chunks():
-                destination.write(chunk)
+        if not word_file:
+            return render(request, 'web/add_category.html', {
+                'form': form,
+                'error': 'Файл со словами обязателен'
+            }, status=400)
 
         try:
+            absolute_file_path = handle_word_file_upload(request.user, category, word_file)
             call_command(
                 'load_words',
                 dir_path=os.path.dirname(absolute_file_path),
                 user_name=request.user.username,
                 verbosity=0
             )
-
-        except Exception :
-            default_storage.delete(upload_path)
+        except Exception:
+            upload_path = os.path.join('tmp', str(request.user.id), f'{category.name}.txt')
+            if default_storage.exists(upload_path):
+                default_storage.delete(upload_path)
             return render(request, 'web/add_category.html', {
                 'form': form,
                 'error': 'Ошибка при загрузке слов. Проверьте формат файла.'
             }, status=400)
 
         return redirect('categories')
-    else:
-        form = AddCategoryForm()
-
+    
+    form = AddCategoryForm()
     return render(request, 'web/add_category.html', {'form': form})
 
 
@@ -308,13 +439,7 @@ def edit_category_view(request, category_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
 
     if request.method == 'POST':
-        form = EditCategoryForm(
-            request.POST, 
-            request.FILES, 
-            instance=category, 
-            user=request.user
-        )
-        
+        form = EditCategoryForm(request.POST, request.FILES, instance=category, user=request.user)
         if not form.is_valid():
             return render(request, 'web/edit_category.html', {
                 'form': form,
@@ -329,6 +454,7 @@ def edit_category_view(request, category_id):
         'form': form,
         'category': category
     })
+
 
 def stats_view(request):
     user = request.user
@@ -461,12 +587,11 @@ def add_word_to_category_view(request, category_id):
                             transcription=transcription
                         )
                         new_word.category.add(category)
-                        
                         messages.success(request, 'Слово успешно создано и добавлено')
 
                     return redirect('categories_wordlist', category_id=category.id)
 
-            except IntegrityError as e:
+            except IntegrityError:
                 form.add_error('word', 'Ошибка: такое слово уже существует')
             except Exception as e:
                 form.add_error(None, f'Ошибка: {str(e)}')
@@ -479,13 +604,13 @@ def add_word_to_category_view(request, category_id):
         'category': category
     })
 
+
 @require_http_methods(["POST"])
 @auth_required
 def word_start_learning(request, word_id):
     try:
         word = Word.objects.get(id=word_id)
-
-        if not word.category.filter(Q(owner=request.user) | Q(owner__isnull=True)).exists():
+        if not check_word_permission(word, request.user):
             return JsonResponse({
                 'status': 'error',
                 'message': 'Нет доступа к этому слову'
@@ -501,13 +626,13 @@ def word_start_learning(request, word_id):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
+
 @require_http_methods(["POST"])
 @auth_required
 def word_mark_known(request, word_id):
     try:
         word = Word.objects.get(id=word_id)
-
-        if not word.category.filter(Q(owner=request.user) | Q(owner__isnull=True)).exists():
+        if not check_word_permission(word, request.user):
             return JsonResponse({
                 'status': 'error',
                 'message': 'Нет доступа к этому слову'
@@ -521,13 +646,13 @@ def word_mark_known(request, word_id):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
+
 @require_http_methods(["POST"])
 @auth_required
 def word_reset_progress(request, word_id):
     try:
         word = Word.objects.get(id=word_id)
-
-        if not word.category.filter(Q(owner=request.user) | Q(owner__isnull=True)).exists():
+        if not check_word_permission(word, request.user):
             return JsonResponse({
                 'status': 'error',
                 'message': 'Нет доступа к этому слову'
@@ -541,6 +666,7 @@ def word_reset_progress(request, word_id):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     
+
 @auth_required
 def word_edit(request, category_id, word_id):
     category = get_object_or_404(Category, id=category_id, owner=request.user)
@@ -607,7 +733,7 @@ def word_edit(request, category_id, word_id):
                     messages.success(request, 'Слово успешно обновлено')
                     return redirect('categories_wordlist', category_id=category.id)
             
-            except IntegrityError as e:
+            except IntegrityError:
                 form.add_error(None, 'Ошибка базы данных при обновлении слова')
             except Exception as e:
                 form.add_error(None, f'Неожиданная ошибка: {str(e)}')
@@ -640,10 +766,7 @@ def word_delete(request, category_id, word_id):
             categories_count = word.category.count()
             word.category.remove(category)
             
-            if categories_count > 1:
-                message = 'Слово удалено из категории'
-            else:
-                message = 'Слово полностью удалено'
+            message = 'Слово удалено из категории' if categories_count > 1 else 'Слово полностью удалено'
             
             return JsonResponse({
                 'status': 'success', 
@@ -684,7 +807,6 @@ def update_user_categories(request):
     
     except Category.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Category not found'}, status=404)
-    
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     
@@ -712,7 +834,7 @@ def new_word_send_result(request):
                 'message': 'Word not found'
             }, status=404)
         
-        if not word.category.filter(Q(owner__isnull=True) | Q(owner=user)):
+        if not check_word_permission(word, user):
             return JsonResponse({
                 'status': 'error', 
                 'message': 'No permission for this word'
@@ -734,8 +856,8 @@ def new_word_send_result(request):
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-     
     
+
 @require_http_methods(["GET"])
 @auth_required(redirect_to_login=False)
 def get_new_word(request):
@@ -789,10 +911,7 @@ def get_word_repeat(request):
                 , status=200)
         
         words_ids = words_to_repeat.values_list('word_id', flat=True)
-        words_to_repeat = Word.objects.filter(
-            id__in=words_ids
-        )
-
+        words_to_repeat = Word.objects.filter(id__in=words_ids)
         word_to_repeat = random.choice(words_to_repeat)
 
         return JsonResponse({
@@ -806,7 +925,6 @@ def get_word_repeat(request):
     except Exception as e: 
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
-REPETITION_INTERVALS = {0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
 
 @require_http_methods(["POST"])
 @auth_required(redirect_to_login=False)
@@ -840,8 +958,7 @@ def send_repeat_result(request):
 
         try:
             word = Word.objects.get(id=word_id)
-
-            if not word.category.filter(Q(owner__isnull=True) | Q(owner=user)).exists():
+            if not check_word_permission(word, user):
                 return JsonResponse({
                     'status': 'error',
                     'message': 'No permission for this word'
@@ -854,7 +971,7 @@ def send_repeat_result(request):
 
         try:
             repetition = Word_Repetition.objects.get(user=user, word_id=word_id)
-            if repetition.next_review > now:
+            if repetition.next_review >= now:
                 return JsonResponse({
                     'status': 'error',
                     'message': f'Word is not ready for repetition yet. Next review at {repetition.next_review}'
@@ -876,21 +993,18 @@ def send_repeat_result(request):
         if is_known:
             if repetition.repetition_count == 5:
                 repetition.delete()
-                Learned_Word.objects.create(
-                    user=user,
-                    word_id=word_id
-                )
+                Learned_Word.objects.create(user=user, word_id=word_id)
                 message = 'Word learned!'
             else:
                 repetition.repetition_count += 1
-                repetition.next_review = timezone.now() + timedelta(
+                repetition.next_review = now + timedelta(
                     minutes=REPETITION_INTERVALS.get(repetition.repetition_count, 0)
                 )
                 repetition.save()
                 message = 'Repetition updated'
         else:
             repetition.repetition_count = max(0, repetition.repetition_count - 1)
-            repetition.next_review = timezone.now() + timedelta(
+            repetition.next_review = now + timedelta(
                 minutes=REPETITION_INTERVALS.get(repetition.repetition_count, 0)
             )
             repetition.save()
@@ -928,38 +1042,16 @@ def get_test_questions(request):
                 'message': 'Category not found'
             }, status=404)
 
-        words = list(Word.objects.filter(
-            category__id=category_id
-        ).values('id', 'word', 'transcription', 'translation'))
-
+        words = list(Word.objects.filter(category__id=category_id).values('id', 'word', 'transcription', 'translation'))
+        
         if not words:
             return JsonResponse({'status': 'success', 'questions': []})
         
-        questions = []
-
-        for word in words:
-            wrong_translations = random.sample(
-                [w['translation'] for w in words if w['id'] != word['id']],
-                min(3, len(words) - 1)
-            )
-
-            options = [{'translation': word['translation'], 'is_correct': True}] + [
-                {'translation': trans, 'is_correct': False} for trans in wrong_translations
-            ]
-            random.shuffle(options)
-
-            questions.append({
-             
-                'id': word['id'],
-                'word': word['word'],
-                'transcription': word['transcription'],
-                'options': options
-            })
-        
+        questions = generate_test_questions(words)
         return JsonResponse({'status': 'success', 'questions': questions})
 
     except Exception as e:
-            return JsonResponse({'status': 'error','error': str(e)}, status=500)
+        return JsonResponse({'status': 'error','error': str(e)}, status=500)
 
 
 @require_http_methods(["GET"])
@@ -1014,12 +1106,6 @@ def search_words(request):
         }, status=500)
     
 
-LEARNING_METHODS = {
-    'new_words': 'new_words',
-    'repeat': 'repeat',
-    'test': 'test'
-}
-
 @require_http_methods(["POST"])
 @auth_required(redirect_to_login=False)
 def track_session(request):
@@ -1034,96 +1120,23 @@ def track_session(request):
             }, status=400)
         
         if data['type'] == 'session_start':
-            if 'page_url' not in data or 'session_start' not in data:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Missing required fields for session start'
-                }, status=400)
-            try:
-                parsed_url = urlparse(data['page_url'])
-                page = parsed_url.path.split('/')[-1]
-                query_params = parse_qs(parsed_url.query)
-                category_id = query_params.get('category_id', [None])[0]
-
-                method = LEARNING_METHODS.get(page)
-                if not method:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'Invalid learning method'
-                    }, status=400)
-                
-                if category_id:
-                    try:
-                        category = Category.objects.get(id=category_id)
-                        if category.owner and category.owner != user:
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'No permission for this category'
-                            }, status=403)
-                    except Category.DoesNotExist:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Category not found'
-                        }, status=404)
-            
-                session = Learning_Session.objects.create(
-                    user=user,
-                    start_time=data['session_start'],
-                    method=LEARNING_METHODS.get(page, ''),
-                    category_id=category_id
-                )
-                return JsonResponse({
-                    'status': 'success', 
-                    'message': 'session was started', 
-                    'session_id': session.id
-                    }, status=200)
-            
-            except Exception as e:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Failed to start session: {str(e)}'
-                }, status=400)
+            return handle_session_start(user, data)
         
-        elif data['type'] == 'session_end':
-            required_fields = ['session_id', 'session_end', 'duration']
-            if not all(field in data for field in required_fields):
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Missing required fields for session end: {', '.join(required_fields)}'
-                }, status=400)
-            
-            try:
-                session = Learning_Session.objects.get(id=data['session_id'])
-                if session.user != user:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'This session does not belong to you'
-                    }, status=403)
-
-                session.end_time = data['session_end']
-                session.duration = data['duration']
-                session.save()
-                
-                return JsonResponse({
-                    'status': 'success', 
-                    'message': 'Session ended successfully'
-                }, status=200)
-
-            except Learning_Session.DoesNotExist:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Session not found'
-                }, status=404)
-            except Exception as e:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Failed to end session: {str(e)}'
-                }, status=400)
+        if data['type'] == 'session_end':
+            return handle_session_end(user, data)
 
         return JsonResponse({
             'status': 'error',
             'message': 'Invalid session type'
         }, status=400)
     
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Invalid JSON data'
+        }, status=400)
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
