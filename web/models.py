@@ -1,7 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models.signals import pre_delete, m2m_changed
 from django.dispatch import receiver
@@ -21,6 +20,7 @@ class Category(models.Model):
     class Meta:
         unique_together = ['name', 'owner']
 
+
 class Word(models.Model):
     category = models.ManyToManyField(Category, related_name='words')
     word = models.CharField(max_length=50)
@@ -30,19 +30,7 @@ class Word(models.Model):
     class Meta:
         unique_together = ['word', 'translation', 'transcription']
 
-@receiver(m2m_changed, sender=Word.category.through)
-def delete_words_without_categories(sender, instance, action, **kwargs):
-    if action in ['post_remove', 'post_clear']:
-        if not instance.category.exists():
-            instance.delete()
 
-@receiver(pre_delete, sender=Category)
-def on_category_delete(sender, instance, **kwargs):
-    words = Word.objects.filter(category=instance)
-    for word in words:
-        if word.category.count() == 1 and instance in word.category.all():
-            word.delete()
-            
 class Learning_Session(models.Model):
     class Method(models.TextChoices):
         NEW_WORDS = "new_words", "New Words",
@@ -60,6 +48,7 @@ class Learning_Session(models.Model):
         null=False
     )
     category = models.ForeignKey(Category, null=True, on_delete=models.CASCADE)
+
 
 class Answer_Attempt(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
@@ -94,6 +83,7 @@ class Learned_Word(models.Model):
     class Meta:
         unique_together = ['user', 'word']
 
+
 class Feedback(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField()
@@ -102,3 +92,18 @@ class Feedback(models.Model):
 
     def __str__(self):
         return f"Feedback from {self.name} ({self.email})"
+    
+
+@receiver(m2m_changed, sender=Word.category.through)
+def delete_words_without_categories(sender, instance, action, **kwargs):
+    if action in ['post_remove', 'post_clear']:
+        if not instance.category.exists():
+            instance.delete()
+
+
+@receiver(pre_delete, sender=Category)
+def on_category_delete(sender, instance, **kwargs):
+    words = Word.objects.filter(category=instance)
+    for word in words:
+        if word.category.count() == 1 and instance in word.category.all():
+            word.delete()

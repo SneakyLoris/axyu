@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from web.models import Feedback, Category, Word
+from web.models import Category, Feedback
 
 User = get_user_model()
 
@@ -54,6 +54,7 @@ class AuthForm(forms.Form):
             'required': 'Обязательное поле'
         }
     )
+
 
 class FeedbackForm(forms.ModelForm):
     class Meta:
@@ -148,6 +149,7 @@ class EditCategoryForm(forms.ModelForm):
             raise forms.ValidationError("Категория с таким названием уже существует как общая.")
             
         return name
+
 
 class AddWordForm(forms.Form):
     word = forms.CharField(

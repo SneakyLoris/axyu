@@ -1,26 +1,33 @@
+import json
+import os
+from datetime import timedelta
 import shutil
 from unittest.mock import patch
+
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.models import AnonymousUser
-from web.models import Answer_Attempt, Category, Learning_Session, Word, Learned_Word, Word_Repetition, Learning_Category, Feedback
-from web.forms import AddCategoryForm, AddWordForm, EditCategoryForm, EditWordForm, RegistrationForm, AuthForm, FeedbackForm
-import os
-import json
-
-from django.core.files.base import ContentFile
 from django.contrib.messages import get_messages
 from django.contrib import messages
-from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 
+from web.models import (
+    Answer_Attempt, Category, Feedback, Learned_Word,
+    Learning_Category, Learning_Session, Word, Word_Repetition
+)
+from web.forms import (
+    AddCategoryForm, AddWordForm, EditCategoryForm,
+    EditWordForm, FeedbackForm, RegistrationForm
+)
 from web.views import REPETITION_INTERVALS
 
 User = get_user_model()
+
 
 class AuthViewsTest(TestCase):
     def setUp(self):
