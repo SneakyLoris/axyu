@@ -385,7 +385,7 @@ def feedback_view(request):
         form = FeedbackForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Спасибо за ваше сообщение! Мы свяжемся с вами в ближайшее время.')
+            messages.success(request, 'Спасибо за ваше сообщение! Мы свяжемся с вами в ближайшее время.', extra_tags='feedback_only')
             return redirect('feedback')
     else:
         form = FeedbackForm(user=request.user)

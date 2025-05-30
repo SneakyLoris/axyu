@@ -13,14 +13,6 @@
         <a href="{% url 'feedback_list' %}" class="auth-link">Назад к списку</a>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-    
     <form method="post" class="feedback-form">
         {% csrf_token %}
 

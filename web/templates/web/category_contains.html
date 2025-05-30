@@ -22,6 +22,16 @@
 
     <div class="category-actions">
         <div class="action-buttons">
+
+            {% if user.is_authenticated %}
+            <a href="{% url 'reset_category_progress' category.id %}"
+               class="action-btn"
+               title="Сбросить прогресс"
+               onclick="return confirm('Вы уверены, что хотите сбросить прогресс по этой категории? Все ваши результаты будут удалены.');">
+                <i class="fas fa-undo"></i>
+            </a>
+            {% endif %}
+
             {% if category.owner == request.user %}
             <a href="{% url 'add_word_to_category' category.id %}"
                class="action-btn"
@@ -30,13 +40,6 @@
             </a>
             <a href="{% url 'edit_category' category.id %}" class="action-btn" title="Редактировать категорию">
                 <i class="fas fa-edit"></i>
-            </a>
-
-            <a href="{% url 'reset_category_progress' category.id %}"
-               class="action-btn"
-               title="Сбросить прогресс"
-               onclick="return confirm('Вы уверены, что хотите сбросить прогресс по этой категории? Все ваши результаты будут удалены.');">
-                <i class="fas fa-undo"></i>
             </a>
 
             <a href="{% url 'remove_category' category.id %}"
@@ -77,6 +80,17 @@
             <span class="english-word">{{ word.word }} /{{ word.transcription }}/</span>
             <span class="separator">—</span>
             <span class="russian-word">{{ word.translation }}</span>
+            {% if category.owner == user %}
+                <div class="word-actions" style="margin-left: auto; display: flex; gap: 10px;">
+                    <a href="{% url 'word_edit' category.id word.id %}" class="action-btn" title="Редактировать">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="#" class="action-btn danger" title="Удалить"
+                       onclick="if (confirm('Удалить это слово?')) { fetch('{% url 'word_delete' category.id word.id %}', { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' } }).then(resp => location.reload()); } return false;">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+            {% endif %}
             {% if word.status == 'in_progress' %}
                 <div class="progress-circle" data-progress="{{ word.repetition_progress }}">
                     <span class="progress-count">{{ word.repetition_count }}</span>
