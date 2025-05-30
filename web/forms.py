@@ -76,6 +76,14 @@ class FeedbackForm(forms.ModelForm):
             }),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if self.user and self.user.is_authenticated:
+            self.fields['email'].initial = self.user.email
+            self.fields['name'].initial = self.user.username
+
 
 class AddCategoryForm(forms.ModelForm):
     word_file = forms.FileField(

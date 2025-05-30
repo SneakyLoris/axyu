@@ -1,0 +1,39 @@
+{% extends 'web/base_template.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/feedback.css' %}">
+<link rel="stylesheet" href="{% static 'web/css/feedback_list.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="feedback-container">
+    <h2>Список обращений</h2>
+
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'feedback' %}" class="auth-link">Написать обращение</a>
+        {% if request.user.is_superuser %}
+            <span class="feedback-info">(Вы видите все обращения как администратор)</span>
+        {% else %}
+            <span class="feedback-info">(Вы видите только свои обращения)</span>
+        {% endif %}
+    </div>
+
+    <div class="feedback-list">
+        {% for feedback in feedback_list %}
+        <div class="feedback-item">
+            <div class="feedback-header">
+                <span class="feedback-name">{{ feedback.name }}</span>
+                <span class="feedback-date">{{ feedback.created_at|date:"d.m.Y H:i" }}</span>
+                {% if request.user.is_superuser %}
+                    <span class="feedback-email">{{ feedback.email }}</span>
+                {% endif %}
+            </div>
+            <div class="feedback-message">{{ feedback.message }}</div>
+        </div>
+        {% empty %}
+        <p>Пока нет ни одного обращения.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

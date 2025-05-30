@@ -16,7 +16,7 @@ from django.db.models import (
     Q, Subquery, Value, When
 )
 from django.db.models.functions import Coalesce, ExtractHour, TruncDate
-from django.http import Http404, JsonResponse
+from django.http import Http404, JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -28,8 +28,8 @@ from web.forms import (
     EditWordForm, FeedbackForm, RegistrationForm,
 )
 from web.models import (
-    Answer_Attempt, Category, Learned_Word, Learning_Category, 
-    Learning_Session, User, Word, Word_Repetition,
+    Answer_Attempt, Category, Learned_Word, Learning_Category,
+    Learning_Session, User, Word, Word_Repetition, Feedback,
 )
 from web.services.ml_repetition import ml_service
 
@@ -382,15 +382,27 @@ def remove_category_view(request, category_id):
 
 def feedback_view(request):
     if request.method == 'POST':
-        form = FeedbackForm(request.POST)
+        form = FeedbackForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'Спасибо за ваше сообщение! Мы свяжемся с вами в ближайшее время.')
             return redirect('feedback')
     else:
-        form = FeedbackForm()
+        form = FeedbackForm(user=request.user)
 
     return render(request, 'web/feedback.html', {'form': form})
+
+
+@auth_required
+def feedback_list_view(request):
+    if request.user.is_superuser:
+        feedback_list = Feedback.objects.all().order_by('-created_at')
+    else:
+        feedback_list = Feedback.objects.filter(email=request.user.email).order_by('-created_at')
+
+    return render(request, 'web/feedback_list.html', {
+        'feedback_list': feedback_list
+    })
 
 
 @auth_required
@@ -466,7 +478,7 @@ def stats_view(request):
     stats = {
         'total_words': total_learned_words,
         'total_quizzes': total_repetitions,
-        'avg_testing': str(round(avg_time_of_tests['duration__avg'], 2)),
+        'avg_testing': 0  if avg_time_of_tests['duration__avg'] is None else str(round(avg_time_of_tests['duration__avg'], 2)),
     }
 
     ### Список изучаемых категорий

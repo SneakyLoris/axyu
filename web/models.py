@@ -92,7 +92,9 @@ class Feedback(models.Model):
 
     def __str__(self):
         return f"Feedback from {self.name} ({self.email})"
-    
+
+    class Meta:
+        ordering = ['-created_at']  # Сортировка по умолчанию - сначала новые
 
 @receiver(m2m_changed, sender=Word.category.through)
 def delete_words_without_categories(sender, instance, action, **kwargs):
