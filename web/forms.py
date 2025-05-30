@@ -84,6 +84,9 @@ class FeedbackForm(forms.ModelForm):
             self.fields['email'].initial = self.user.email
             self.fields['name'].initial = self.user.username
 
+        if self.instance and self.instance.pk:
+            self.fields.pop('email', None)
+            self.fields.pop('name', None)
 
 class AddCategoryForm(forms.ModelForm):
     word_file = forms.FileField(

@@ -406,6 +406,34 @@ def feedback_list_view(request):
 
 
 @auth_required
+def feedback_edit_view(request, pk):
+    feedback = get_object_or_404(Feedback, pk=pk)
+
+    if not request.user.is_superuser and feedback.email != request.user.email:
+        raise PermissionDenied("Нет доступа к этому сообщению")
+
+    if request.method == 'POST':
+        form = FeedbackForm(request.POST, instance=feedback, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Обращение обновлено')
+            return redirect('feedback_list')
+    else:
+        form = FeedbackForm(instance=feedback, user=request.user)
+
+    return render(request, 'web/feedback_edit.html', {'form': form})
+
+
+@auth_required
+def feedback_delete_view(request, pk):
+    feedback = get_object_or_404(Feedback, pk=pk)
+    if request.user.is_superuser or feedback.email == request.user.email:
+        feedback.delete()
+        messages.success(request, 'Обращение удалено')
+    return redirect('feedback_list')
+
+
+@auth_required
 def add_category_view(request):
     if request.method == 'POST':
         form = AddCategoryForm(request.POST, request.FILES, user=request.user)

@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="{% static 'web/css/feedback.css' %}">
 <link rel="stylesheet" href="{% static 'web/css/feedback_list.css' %}">
 {% endblock %}
@@ -12,11 +13,6 @@
 
     <div style="margin-bottom: 20px;">
         <a href="{% url 'feedback' %}" class="auth-link">Написать обращение</a>
-        {% if request.user.is_superuser %}
-            <span class="feedback-info">(Вы видите все обращения как администратор)</span>
-        {% else %}
-            <span class="feedback-info">(Вы видите только свои обращения)</span>
-        {% endif %}
     </div>
 
     <div class="feedback-list">
@@ -25,11 +21,18 @@
             <div class="feedback-header">
                 <span class="feedback-name">{{ feedback.name }}</span>
                 <span class="feedback-date">{{ feedback.created_at|date:"d.m.Y H:i" }}</span>
-                {% if request.user.is_superuser %}
-                    <span class="feedback-email">{{ feedback.email }}</span>
-                {% endif %}
             </div>
             <div class="feedback-message">{{ feedback.message }}</div>
+            {% if feedback.email == request.user.email %}
+              <a href="{% url 'feedback_edit' feedback.id %}" title="Редактировать">
+                <i class="fas fa-edit"></i>
+              </a>
+            {% endif %}
+            <a href="{% url 'feedback_delete' feedback.id %}"
+               onclick="return confirm('Удалить обращение?')"
+               title="Удалить">
+               <i class="fas fa-trash"></i>
+            </a>
         </div>
         {% empty %}
         <p>Пока нет ни одного обращения.</p>
