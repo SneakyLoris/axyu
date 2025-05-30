@@ -1,0 +1,87 @@
+/* ===== Основной контейнер профиля ===== */
+.profile-container {
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+}
+
+.profile-card h1 {
+    text-align: center;
+    color: var(--secondary-color);
+    margin-bottom: 24px;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+/* ===== Информация о пользователе ===== */
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding: 16px;
+    background-color: var(--lighter-bg-color);
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.profile-info p {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text-color);
+}
+
+.profile-info strong {
+    color: var(--secondary-color);
+}
+
+/* ===== Действия с профилем ===== */
+.profile-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.edit-profile-btn,
+.delete-account-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 200px;
+    height: 42px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+}
+
+.edit-profile-btn {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.edit-profile-btn:hover {
+    background-color: #3367d6;
+    transform: translateY(-2px);
+}
+
+.delete-account-btn {
+    background-color: #ff4444;
+    color: white;
+}
+
+.delete-account-btn:hover {
+    background-color: #d32f2f;
+    transform: translateY(-2px);
+}

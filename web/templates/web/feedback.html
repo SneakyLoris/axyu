@@ -1,17 +1,16 @@
 {% extends 'web/base_template.html' %}
 {% load static %}
-
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'web/css/feedback.css' %}">
 {% endblock %}
-
 {% block content %}
 <div class="feedback-container">
-    <h2>Свяжитесь с нами</h2>
-    <p>Есть вопросы или предложения? Мы будем рады услышать ваше мнение!</p>
+    <h2>Связь с нами</h2>
 
-    <div style="margin-bottom: 20px;">
-        <a href="{% url 'feedback_list' %}" class="auth-link">Список обращений</a>
+    <div class="nav-buttons">
+        <a href="{% url 'feedback_list' %}" class="nav-button">
+            <i class="fas fa-list"></i> Список обращений
+        </a>
     </div>
 
     {% for message in messages %}
@@ -22,27 +21,22 @@
         {% endif %}
     {% endfor %}
 
-    
     <form method="post" class="feedback-form">
         {% csrf_token %}
-        
         <div class="form-group">
             <label for="id_name">Ваше имя</label>
             {{ form.name }}
         </div>
-        
         <div class="form-group">
             <label for="id_email">Email</label>
             {{ form.email }}
         </div>
-        
         <div class="form-group">
             <label for="id_message">Сообщение</label>
             {{ form.message }}
         </div>
-        
         <button type="submit" class="submit-btn">
-            <span>Отправить сообщение</span>
+            <span><i class="fas fa-paper-plane"></i> Отправить сообщение</span>
         </button>
     </form>
 </div>

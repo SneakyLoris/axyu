@@ -80,17 +80,6 @@
             <span class="english-word">{{ word.word }} /{{ word.transcription }}/</span>
             <span class="separator">—</span>
             <span class="russian-word">{{ word.translation }}</span>
-            {% if category.owner == user %}
-                <div class="word-actions" style="margin-left: auto; display: flex; gap: 10px;">
-                    <a href="{% url 'word_edit' category.id word.id %}" class="action-btn" title="Редактировать">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                    <a href="#" class="action-btn danger" title="Удалить"
-                       onclick="if (confirm('Удалить это слово?')) { fetch('{% url 'word_delete' category.id word.id %}', { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' } }).then(resp => location.reload()); } return false;">
-                        <i class="fas fa-trash"></i>
-                    </a>
-                </div>
-            {% endif %}
             {% if word.status == 'in_progress' %}
                 <div class="progress-circle" data-progress="{{ word.repetition_progress }}">
                     <span class="progress-count">{{ word.repetition_count }}</span>

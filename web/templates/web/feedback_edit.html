@@ -1,28 +1,26 @@
 {% extends 'web/base_template.html' %}
 {% load static %}
-
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'web/css/feedback.css' %}">
 {% endblock %}
-
 {% block content %}
 <div class="feedback-container">
     <h2>Редактирование обращения</h2>
 
-    <div style="margin-bottom: 20px;">
-        <a href="{% url 'feedback_list' %}" class="auth-link">Назад к списку</a>
+    <div class="nav-buttons">
+        <a href="{% url 'feedback_list' %}" class="nav-button">
+            <i class="fas fa-arrow-left"></i> Назад к списку
+        </a>
     </div>
 
     <form method="post" class="feedback-form">
         {% csrf_token %}
-
         <div class="form-group">
             <label for="id_message">Сообщение</label>
             {{ form.message }}
         </div>
-        
         <button type="submit" class="submit-btn">
-            <span>Сохранить изменения</span>
+            <span><i class="fas fa-save"></i> Сохранить изменения</span>
         </button>
     </form>
 </div>

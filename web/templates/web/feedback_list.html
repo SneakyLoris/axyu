@@ -1,18 +1,18 @@
 {% extends 'web/base_template.html' %}
 {% load static %}
-
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="{% static 'web/css/feedback.css' %}">
 <link rel="stylesheet" href="{% static 'web/css/feedback_list.css' %}">
 {% endblock %}
-
 {% block content %}
 <div class="feedback-container">
     <h2>Список обращений</h2>
 
-    <div style="margin-bottom: 20px;">
-        <a href="{% url 'feedback' %}" class="auth-link">Написать обращение</a>
+    <div class="nav-buttons">
+        <a href="{% url 'feedback' %}" class="nav-button">
+            <i class="fas fa-plus-circle"></i> Написать обращение
+        </a>
     </div>
 
     <div class="feedback-list">
@@ -23,16 +23,22 @@
                 <span class="feedback-date">{{ feedback.created_at|date:"d.m.Y H:i" }}</span>
             </div>
             <div class="feedback-message">{{ feedback.message }}</div>
-            {% if feedback.user == request.user %}
-              <a href="{% url 'feedback_edit' feedback.id %}" title="Редактировать">
-                <i class="fas fa-edit"></i>
-              </a>
-            {% endif %}
-            <a href="{% url 'feedback_delete' feedback.id %}"
-               onclick="return confirm('Удалить обращение?')"
-               title="Удалить">
-               <i class="fas fa-trash"></i>
-            </a>
+
+            <div class="message-actions">
+                {% if feedback.user == request.user %}
+                    <a href="{% url 'feedback_edit' feedback.id %}"
+                       title="Редактировать"
+                       class="message-action-btn">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                {% endif %}
+                <a href="{% url 'feedback_delete' feedback.id %}"
+                   onclick="return confirm('Удалить обращение?')"
+                   title="Удалить"
+                   class="message-action-btn message-action-btn-danger">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </div>
         </div>
         {% empty %}
         <p>Пока нет ни одного обращения.</p>

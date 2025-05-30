@@ -159,3 +159,62 @@ textarea {
     box-sizing: border-box;
     font-size: var(--font-size-base);
 }
+
+/* ===== Профиль ===== */
+.profile-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.profile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.profile-info p {
+    font-size: 1.1rem;
+    color: var(--text-color);
+}
+
+.profile-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.edit-category-link {
+    color: #4285f4;
+    text-decoration: none;
+    border: 1px solid #4285f4;
+    padding: 10px 16px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.edit-category-link:hover {
+    background-color: #e8f0fe;
+    color: #2962ff;
+    text-decoration: none;
+}
+
+.delete-account-btn {
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.delete-account-btn:hover {
+    background-color: #d32f2f;
+}
