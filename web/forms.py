@@ -68,6 +68,7 @@ class FeedbackForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={
                 'id': 'id_email',
                 'class': 'form-control',
+                'readonly': 'readonly',
             }),
             'message': forms.Textarea(attrs={
                 'id': 'id_message',
@@ -81,12 +82,22 @@ class FeedbackForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if self.user and self.user.is_authenticated:
-            self.fields['email'].initial = self.user.email
             self.fields['name'].initial = self.user.username
+            self.fields['email'].initial = self.user.email
+            self.fields['email'].disabled = True  # технически запрещает отправку другого email
 
         if self.instance and self.instance.pk:
             self.fields.pop('email', None)
             self.fields.pop('name', None)
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.user and self.user.is_authenticated:
+            instance.user = self.user
+            instance.email = self.user.email  # перезапись на случай попытки обхода
+        if commit:
+            instance.save()
+        return instance
 
 class AddCategoryForm(forms.ModelForm):
     word_file = forms.FileField(

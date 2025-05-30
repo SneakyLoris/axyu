@@ -398,7 +398,7 @@ def feedback_list_view(request):
     if request.user.is_superuser:
         feedback_list = Feedback.objects.all().order_by('-created_at')
     else:
-        feedback_list = Feedback.objects.filter(email=request.user.email).order_by('-created_at')
+        feedback_list = Feedback.objects.filter(user=request.user).order_by('-created_at')
 
     return render(request, 'web/feedback_list.html', {
         'feedback_list': feedback_list
@@ -409,7 +409,7 @@ def feedback_list_view(request):
 def feedback_edit_view(request, pk):
     feedback = get_object_or_404(Feedback, pk=pk)
 
-    if not request.user.is_superuser and feedback.email != request.user.email:
+    if feedback.user != request.user:
         raise PermissionDenied("Нет доступа к этому сообщению")
 
     if request.method == 'POST':
@@ -427,7 +427,7 @@ def feedback_edit_view(request, pk):
 @auth_required
 def feedback_delete_view(request, pk):
     feedback = get_object_or_404(Feedback, pk=pk)
-    if request.user.is_superuser or feedback.email == request.user.email:
+    if request.user.is_superuser or feedback.user == request.user:
         feedback.delete()
         messages.success(request, 'Обращение удалено')
     return redirect('feedback_list')

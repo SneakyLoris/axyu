@@ -23,7 +23,7 @@
                 <span class="feedback-date">{{ feedback.created_at|date:"d.m.Y H:i" }}</span>
             </div>
             <div class="feedback-message">{{ feedback.message }}</div>
-            {% if feedback.email == request.user.email %}
+            {% if feedback.user == request.user %}
               <a href="{% url 'feedback_edit' feedback.id %}" title="Редактировать">
                 <i class="fas fa-edit"></i>
               </a>

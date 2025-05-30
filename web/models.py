@@ -85,6 +85,7 @@ class Learned_Word(models.Model):
 
 
 class Feedback(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=100)
     email = models.EmailField()
     message = models.TextField()
