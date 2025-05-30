@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlparse
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.core.exceptions import PermissionDenied
 from django.core.files.storage import default_storage
 from django.core.management import call_command
@@ -1180,3 +1180,40 @@ def track_session(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+
+@auth_required
+def profile_view(request):
+    return render(request, 'web/profile.html', {'user': request.user})
+
+
+@auth_required
+def profile_edit_view(request):
+    user = request.user
+    if request.method == 'POST':
+        form = RegistrationForm(request.POST, instance=user)
+        if form.is_valid():
+            user.username = form.cleaned_data['username']
+            user.email = form.cleaned_data['email']
+            if form.cleaned_data['password']:
+                user.set_password(form.cleaned_data['password'])
+                update_session_auth_hash(request, user)
+            user.save()
+            messages.success(request, 'Аккаунт обновлён')
+            return redirect('profile')
+    else:
+        form = RegistrationForm(instance=user, initial={
+            'password': '',
+            'password2': '',
+        })
+
+    return render(request, 'web/profile_edit.html', {'form': form})
+
+
+@require_http_methods(["POST"])
+@auth_required
+def profile_delete_view(request):
+    user = request.user
+    user.delete()
+    messages.success(request, 'Аккаунт удалён')
+    return redirect('main')

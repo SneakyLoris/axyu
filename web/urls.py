@@ -8,6 +8,9 @@ urlpatterns = [
     path('login/', auth_view, name='login'),
     path('logout', logout_view, name='logout'),
     path('stats', stats_view, name='stats'),
+    path('profile/', profile_view, name='profile'),
+    path('profile/edit/', profile_edit_view, name='profile_edit'),
+    path('profile/delete/', profile_delete_view, name='profile_delete'),
     ##########################################
     path('learning', learning_view, name='learning'),
     path('learning/new_words', learning_new_words_view, name='learning_new_words'),

@@ -1,0 +1,17 @@
+{% extends "web/base_template.html" %}
+{% block content %}
+<div class="container">
+  <h1>Профиль пользователя</h1>
+  <p><strong>Имя:</strong> {{ user.username }}</p>
+  <p><strong>Email:</strong> {{ user.email }}</p>
+
+  <div style="margin-top: 30px; display: flex; gap: 20px;">
+    <a href="{% url 'profile_edit' %}" class="edit-category-link">Редактировать аккаунт</a>
+
+    <form method="post" action="{% url 'profile_delete' %}" onsubmit="return confirm('Вы уверены, что хотите удалить аккаунт?');">
+      {% csrf_token %}
+      <button type="submit" class="delete-category-link" style="background: #ff4444; color: white;">Удалить аккаунт</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

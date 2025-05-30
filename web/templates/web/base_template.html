@@ -38,6 +38,7 @@
                             {{ user.username|first|upper }}
                         </button>
                         <div class="dropdown-content" id="dropdownContent">
+                            <a href="{% url 'profile' %}">Профиль</a>
                             <a href="{% url 'stats' %}">Моя успеваемость</a>
                             <a href="{% url 'feedback' %}">Обратная связь</a>
                             <a href="{% url 'logout' %}">Выйти</a>
